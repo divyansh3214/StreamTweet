@@ -1,0 +1,27 @@
+{
+  "name": "streamtweet",
+  "version": "1.0.0",
+  "description": "streemtweet_project",
+  "keywords": [
+    "javascript",
+    "backend"
+  ],
+  "homepage": "https://github.com/divyansh3214/StreamTweet#readme",
+  "bugs": {
+    "url": "https://github.com/divyansh3214/StreamTweet/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/divyansh3214/StreamTweet.git"
+  },
+  "license": "ISC",
+  "author": "Dviyansh Sharma",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
