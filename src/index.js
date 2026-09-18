@@ -1,7 +1,7 @@
 //require("dotenv").config({path:"./env"});
 import "dotenv/config";
 import connectDB from "./db/index.js";
-
+import app from "./app.js";
 /*
 import express from "express";
 const app = express();
@@ -22,4 +22,17 @@ const app = express();
 })()
 */
 
-connectDB();
+connectDB()
+.then(()=>{
+  app.on("error",error=>{
+    console.error("Error starting server:", error);
+    throw error;
+  })
+  app.listen(process.env.PORT || 3000,()=>{
+     console.log(`Server is running on port ${process.env.PORT || 3000}`);
+  })
+}).catch((err)=>{
+    console.error("Error starting server:", err);
+}).finally(()=>{
+    console.log("Server startup process completed.");
+});
