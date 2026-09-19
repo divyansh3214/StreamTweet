@@ -22,14 +22,23 @@
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "ls": "^1.0.0",
     "mongoose": "^9.10.1",
-    "nodemon": "^3.1.14"
+    "mongoose-aggregate-paginate-v2": "^1.1.5",
+    "nodemon": "^3.1.14",
+    "scripts": "^0.1.0"
   },
   "devDependencies": {
     "prettier": "^3.9.7"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true
   }
 }
