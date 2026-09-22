@@ -1,4 +1,4 @@
-import mongoose from 'mongooe';
+import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 const userSchema= new mongoose.Schema({
@@ -32,7 +32,7 @@ const userSchema= new mongoose.Schema({
    },
    watchhistory:[
       {
-        type:mongoose.Types.Schema.ObjectId,
+        type:mongoose.Schema.Types.ObjectId,
         ref:'Video'
       }
    ],
