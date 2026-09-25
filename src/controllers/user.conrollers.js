@@ -30,7 +30,11 @@ const registeruser = asyncHandler(async (req, res) => {
         throw new ApiiError(409, "User already exists");
     }
     const avatar_localpath=req.files?.avatar[0]?.path;
-    const cover_images=req.files?.coverImage[0]?.path;
+    // const cover_images=req.files?.coverImage[0]?.path;
+    let cover_images;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length>0){
+        cover_images=req.files.coverImage[0]?.path;
+    }
     if(!avatar_localpath){
         throw new ApiiError(400,"Avatar file required")
     }
