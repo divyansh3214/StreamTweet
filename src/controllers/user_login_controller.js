@@ -99,5 +99,22 @@ const refreshaccesstoken=asyncHandler(async(req,res)=>{
     throw new ApiiError(501,"unexpected error")
   }
 })
-export { refreshaccesstoken };
+const changecurrentuserpassword=asyncHandler(async(req,res)=>{
+  const {oldpassword,newpassword}=req.body;
+  const USER=await user.findById(req.loggedout?._id);
+  if(! await USER.isPasswordCorrect(oldpassword)){
+    throw new ApiiError(400,"incorrect old password");
+  }
+  USER.password=newpassword
+  await USER.save({validateBeforeSave:false})
+  return res.status(200).json(
+    new apiresponse(200,{},"password changed successfullly")
+  )
+})
+const getcurrentuser=asyncHandler(async(req,res)=>{
+  return res.status(200).json(
+    200,req.loggedout,"current user fetched successfully"
+  ) 
+})
+export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser };
 export default userlogin;
