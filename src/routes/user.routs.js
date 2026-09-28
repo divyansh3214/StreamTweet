@@ -4,6 +4,7 @@ import upload from "../middlewares/multer.middleware.js";
 import userlogin from "../controllers/user_login_controller.js";
 import { varifyJWT } from "../middlewares/auth.middleware.js";
 import logoutuser from "../controllers/user_logout.js";
+import { refreshaccesstoken } from "../controllers/user_login_controller.js";
 const router=Router();
 router.route("/register").post(
     upload.fields([
@@ -20,4 +21,5 @@ router.route("/register").post(
 )
 router.route("/login").post(userlogin)
 router.route("/logout").post(varifyJWT,logoutuser);
+router.route("/refresh-token").post(refreshaccesstoken)
 export default router;
