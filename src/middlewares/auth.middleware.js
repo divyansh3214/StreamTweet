@@ -8,9 +8,9 @@ export const varifyJWT=asyncHandler(async(req,res,next)=>{
     if(!token){
       throw new ApiiError(401,"Unauthorised request");
     }
-    const decoded_info=await jwt.verify(token,process.env.ACCESS_TOKEN_SECRET);
+    const decoded_info= jwt.verify(token,process.env.ACCESS_TOKEN_SECRET);
     const to_be_logged_out=await user.findById(decoded_info?._id).select(
-      "-password refreshToken"
+      "-password -refreshToken"
     )
     if(!to_be_logged_out){
       //next video=discuss aboyt frontend

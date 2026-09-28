@@ -11,7 +11,7 @@ const logoutuser=asyncHandler(async(req,res)=>{
         }
     },
     {
-        new:true
+       returnDocument: "after"
     }
 )
     const options={
