@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/async_handler.js";
 import ApiiError from "../utils/Api_error.js";
 import user from "../models/user.model.js";
 import apiresponse from "../utils/Api_response.js";
-
+import jet from "jsonwebtoken";
 const generateaccessandrefreshtoken = async (findeduser) => {
   try {
     const accessToken = await findeduser.generateAccessToken();
@@ -60,4 +60,44 @@ const userlogin = asyncHandler(async (req, res) => {
     )
   )
 })
+const refreshaccesstoken=asyncHandler(async(req,res)=>{
+  const incomingtoken=req.cookies.refreshToken || req.body.refreshToken;
+  if(!incomingtoken){
+    throw new ApiiError(401,"Unauthorised Access");
+  }
+  try {
+    const decoded_token=jwt.verify(incomingtoken,process.env.REFRESH_TOKEN_SECRET);
+    if(!decoded_token){
+      throw new ApiiError(402,"not authorised");
+    }
+    const databasefind=await user.findById(decoded_token?._id);
+    if(!databasefind){
+      throw new ApiiError(403,"Unauthorised request");
+    }
+    if(incomingtoken!==databasefind?.refreshToken){
+       throw new ApiiError(403,"refresh token expired or used");
+    }
+  const options={
+    httpOnly:true,
+    secure:true,
+  }
+  const newtokens=await generateaccessandrefreshtoken(databasefind)
+  return res.status(200).
+  cookie("accesstokn",newtokens.accessToken,options).
+  cookie("refreshtoken",newtokens.refreshToken,options).
+  json(
+    new apiresponse(
+      200,
+      {
+        accessToken: newtokens.accessToken,
+        refreshToken:newtokens.refreshToken,
+        message:"Accesstoken refreshed"
+      }
+    )
+  )
+  } catch (error) {
+    throw new ApiiError(501,"unexpected error")
+  }
+})
+export { refreshaccesstoken };
 export default userlogin;
