@@ -154,6 +154,7 @@ const updationoffilesavatar=asyncHandler(async(req,res)=>{
   const response2=USER.toObject();
   delete response2.password;
   delete response2.refreshToken;
+  return res.status(200).json(new apiresponse(200,response2,"Updation successfully"))
 })
 export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser,updateotherdetails,updationoffilesavatar};
 export default userlogin;
