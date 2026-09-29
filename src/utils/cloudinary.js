@@ -22,4 +22,23 @@ const uploadoncloudinary=async(localfilepath)=>{
       return null;
     } 
 }
+
+const publicurl=async(url)=>{
+    const parts = url.split('/');
+    const fileWithExt = parts.pop();
+    const fileName = fileWithExt.split('.')[0];
+    const folderPath = parts.slice(parts.indexOf('upload') + 1).join('/');
+    return folderPath ? `${folderPath}/${fileName}` : fileName;
+}
+
+const deleteoncloudinary=async(fileUrl)=>{
+  const publicId=publicurl(fileUrl);
+  try {
+      const result = await cloudinary.uploader.destroy(publicId, { invalidate: true });
+      console.log('Delete result:', result);
+   } catch (err) {
+      console.error('Error deleting file:', err);
+   }
+}
+export {deleteoncloudinary}
 export default uploadoncloudinary;

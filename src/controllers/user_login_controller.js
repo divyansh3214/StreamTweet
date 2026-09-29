@@ -4,6 +4,7 @@ import user from "../models/user.model.js";
 import apiresponse from "../utils/Api_response.js";
 import jwt from "jsonwebtoken";
 import uploadoncloudinary from "../utils/cloudinary.js";
+import { deleteoncloudinary } from "../utils/cloudinary.js";
 const generateaccessandrefreshtoken = async (findeduser) => {
   try {
     const accessToken = await findeduser.generateAccessToken();
@@ -136,25 +137,34 @@ const updateotherdetails=asyncHandler(async(req,res)=>{
   new apiresponse(200, returningvalues, "details changed successfully")
 );
 })
-const updationoffilesavatar=asyncHandler(async(req,res)=>{
-  const avatar=req.file?.path;
-  if(!avatar){
-    throw new ApiiError(403,"avatar file missing");
+const updationoffilesavatar = asyncHandler(async (req, res) => {
+  const avatar = req.file?.path;
+  if (!avatar) {
+    throw new ApiiError(403, "avatar file missing");
   }
-  const response1=await uploadoncloudinary(avatar);
-  if(!response1.url){
-    throw new ApiiError(404,"error while uploading")
+  const response1 = await uploadoncloudinary(avatar);
+  if (!response1?.url) {
+    throw new ApiiError(404, "error while uploading");
   }
-  const USER=user.findById(req.loggedout?._id);
-  if(!USER){
-    throw ApiiError(401,"retry again");
+  const USER = await user.findById(req.loggedout?._id);
+  if (!USER) {
+    throw new ApiiError(401, "retry again");
   }
-  USER.avatar=response1.url;
-  await USER.save({validateBeforeSave:false})
-  const response2=USER.toObject();
+  const oldfileurl = USER.avatar;
+  if (oldfileurl) {
+    const deletionResult = await deleteoncloudinary(oldfileurl);
+    if (!deletionResult || deletionResult.result !== "ok") {
+      throw new ApiiError(501, "old avatar not deleted");
+    }
+  }
+  USER.avatar = response1.url;
+  await USER.save({ validateBeforeSave: false });
+  const response2 = USER.toObject();
   delete response2.password;
   delete response2.refreshToken;
-  return res.status(200).json(new apiresponse(200,response2,"Updation successfully"))
-})
+  return res.status(200).json(
+    new apiresponse(200, response2, "Updation successfully")
+  );
+});
 export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser,updateotherdetails,updationoffilesavatar};
 export default userlogin;
