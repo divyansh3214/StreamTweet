@@ -2,7 +2,8 @@ import { asyncHandler } from "../utils/async_handler.js";
 import ApiiError from "../utils/Api_error.js";
 import user from "../models/user.model.js";
 import apiresponse from "../utils/Api_response.js";
-import jet from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import uploadoncloudinary from "../utils/cloudinary.js";
 const generateaccessandrefreshtoken = async (findeduser) => {
   try {
     const accessToken = await findeduser.generateAccessToken();
@@ -83,7 +84,7 @@ const refreshaccesstoken=asyncHandler(async(req,res)=>{
   }
   const newtokens=await generateaccessandrefreshtoken(databasefind)
   return res.status(200).
-  cookie("accesstokn",newtokens.accessToken,options).
+  cookie("accesstoken",newtokens.accessToken,options).
   cookie("refreshtoken",newtokens.refreshToken,options).
   json(
     new apiresponse(
@@ -113,8 +114,46 @@ const changecurrentuserpassword=asyncHandler(async(req,res)=>{
 })
 const getcurrentuser=asyncHandler(async(req,res)=>{
   return res.status(200).json(
-    200,req.loggedout,"current user fetched successfully"
-  ) 
+  new apiresponse(200, req.loggedout, "current user fetched successfully")
+);
 })
-export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser };
+const updateotherdetails=asyncHandler(async(req,res)=>{
+  const {fullname,email}=req.body;
+  if(!fullname && !email){
+    throw new ApiiError(403,"Kindly fill all details")
+  }
+  const USER=await user.findById(req.loggedout?._id);
+  if(!USER){
+    throw new ApiiError(402,"User not existed");
+  }
+  USER.fullname=fullname;
+  USER.email=email;
+  await USER.save({validateBeforeSave:false});
+  const returningvalues = USER.toObject();
+  delete returningvalues.password;
+  delete returningvalues.refreshToken;
+  return res.status(200).json(
+  new apiresponse(200, returningvalues, "details changed successfully")
+);
+})
+const updationoffilesavatar=asyncHandler(async(req,res)=>{
+  const avatar=req.file?.path;
+  if(!avatar){
+    throw new ApiiError(403,"avatar file missing");
+  }
+  const response1=await uploadoncloudinary(avatar);
+  if(!response1.url){
+    throw new ApiiError(404,"error while uploading")
+  }
+  const USER=user.findById(req.loggedout?._id);
+  if(!USER){
+    throw ApiiError(401,"retry again");
+  }
+  USER.avatar=response1.url;
+  await USER.save({validateBeforeSave:false})
+  const response2=USER.toObject();
+  delete response2.password;
+  delete response2.refreshToken;
+})
+export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser,updateotherdetails,updationoffilesavatar};
 export default userlogin;
