@@ -166,5 +166,61 @@ const updationoffilesavatar = asyncHandler(async (req, res) => {
     new apiresponse(200, response2, "Updation successfully")
   );
 });
-export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser,updateotherdetails,updationoffilesavatar};
+const getuserchannel_profile=asyncHandler(async(req,res)=>{
+    const {username}=req.params;
+    if(!username?.trim()){
+      throw new ApiiError(403,"username required");
+    }
+   const channel=await user.aggregate([
+     {
+        $match:{
+         username:username?.toLowerCase()
+        }
+     },
+     {
+       $lookup:{
+          from:"subscriptions",
+          localField:"_id",
+          foreignField:"channels",
+          as:"subscribers"
+        }
+     },
+     {
+       $lookup:{
+          from:"subscriptions",
+          localField:"_id",
+          foreignField:"subscriber",
+          as:"subscribedchannels"
+       }
+     },
+     $addFields({
+        subscriberscount:{$size:"$subscribers"},
+        subscribedchannelscount:{$size:"$subscribedchannels"},
+        issubscribed:{
+          $cond:{
+            if:{$in:[req.loggedout?._id,"$subscribers.subscriber"]},
+            then:true,
+            else:false
+          }
+        }
+     }),
+     {
+      $project:{
+       subscriberscount:1,
+       subscribedchannelscount:1,
+       issubscribed:1,
+       username:1,
+       fullname:1,
+       avatar:1,
+       coverImage:1
+      }
+     }
+   ])
+   console.log(channel)
+   if(!channel?.length){
+    throw new ApiiError(404,"channel not found");
+   }
+   return res.status(200).json(new apiresponse(200, channel[0], "channel profile fetched successfully"));
+});
+export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser,updateotherdetails,updationoffilesavatar,getuserchannel_profile};
 export default userlogin;
