@@ -222,5 +222,49 @@ const getuserchannel_profile=asyncHandler(async(req,res)=>{
    }
    return res.status(200).json(new apiresponse(200, channel[0], "channel profile fetched successfully"));
 });
-export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser,updateotherdetails,updationoffilesavatar,getuserchannel_profile};
+const getwatch_history=asyncHandler(async(req,res)=>{
+   const USER=await user.aggregate([
+    {
+      $match:{
+        _id:new mongoose.Types.ObjectId(req.loggedout?._id)
+      }
+    },
+    {
+      $lookup:{
+        from:"videos",
+        localField:"watchhistory",
+        foreignField:"_id",
+        as:"History",
+        pipeline:[
+          {
+            $lookup:{
+              from:"users",
+              localField:"owner",
+              foreignField:"_id",
+              as:"ownerdetails",
+              pipeline:[
+                {
+                  $project:{
+                    username:1,
+                    fullname:1,
+                    avatar:1,
+                    coverImage:1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields:{
+              ownerdetails:{$arrayElemAt:["$ownerdetails",0]}
+            }
+          }
+        ]
+
+      }
+    }
+   ])
+   return res.status(200).json(new apiresponse(200, USER[0].History, "Watch history fetched successfully"));
+});
+export { refreshaccesstoken,changecurrentuserpassword,getcurrentuser,updateotherdetails,updationoffilesavatar,getuserchannel_profile,getwatch_history};
 export default userlogin;
