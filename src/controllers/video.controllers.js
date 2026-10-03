@@ -212,6 +212,21 @@ const updatevideo = asyncHandler(async (req, res) => {
     new apiresponse(200, videoDoc, "video updated successfully")
   );
 });
-
-export {getallvideos, publishvideo, deletevideo, getvideobyid, updatevideo};
+const toglepublishstatus=asyncHandler(async(req,res)=>{
+    const {videoid}=req.params;
+    if(!videoid){
+        throw new ApiiError(400,"videoid is required")
+    }
+    const videodetails=await video.findById(videoid);
+    if(!videodetails){
+        throw new ApiiError(404,"video not found")
+    }
+    if(videodetails.owner.toString()!==req.loggedoutuser?._id?.toString()){
+        throw new ApiiError(403,"you are not authorized to update this video")
+    }
+    videodetails.isPublished=!videodetails.isPublished;
+    await videodetails.save();
+    return res.status(200).json(new apiresponse(200,videodetails,"video publish status toggled successfully"))
+})
+export {getallvideos, publishvideo, deletevideo, getvideobyid, updatevideo, toglepublishstatus};
 
