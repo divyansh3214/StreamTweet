@@ -175,5 +175,43 @@ return res
   .json(new apiresponse(200, videodetails[0], "video details fetched successfully"));
 
 })
-export {getallvideos, publishvideo, deletevideo, getvideobyid};
+const updatevideo = asyncHandler(async (req, res) => {
+  const { videoid } = req.params;
+  const { title, description } = req.body;
+  const thumbnail = req.files?.thumbnail?.[0]?.path;
+  if (!videoid) {
+    throw new ApiiError(400, "videoid is required");
+  }
+  if (!title && !description && !thumbnail) {
+    throw new ApiiError(400, "at least one field is required to update");
+  }
+  const videoDoc = await video.findById(videoid);
+  if (!videoDoc) {
+    throw new ApiiError(404, "video not found");
+  }
+  if (videoDoc.owner.toString() !== req.loggedoutuser?._id?.toString()) {
+    throw new ApiiError(403, "you are not authorized to update this video");
+  }
+  let newThumbnailUrl = videoDoc.thumbnail;
+  if (thumbnail) {
+    const response = await uploadoncloudinary(thumbnail);
+    if (!response?.secure_url) {
+      throw new ApiiError(500, "failed to upload thumbnail on cloudinary");
+    }
+    await deleteoncloudinary(videoDoc.thumbnail);
+    newThumbnailUrl = response.secure_url;
+  }
+
+  videoDoc.title = title || videoDoc.title;
+  videoDoc.description = description || videoDoc.description;
+  videoDoc.thumbnail = newThumbnailUrl;
+
+  await videoDoc.save();
+
+  return res.status(200).json(
+    new apiresponse(200, videoDoc, "video updated successfully")
+  );
+});
+
+export {getallvideos, publishvideo, deletevideo, getvideobyid, updatevideo};
 
