@@ -175,5 +175,5 @@ return res
   .json(new apiresponse(200, videodetails[0], "video details fetched successfully"));
 
 })
-export { getallvideos, publishvideo, deletevideo,getvideobyid };
+export {getallvideos, publishvideo, deletevideo, getvideobyid};
 
