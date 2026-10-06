@@ -32,3 +32,10 @@ The Next.js rewrite proxies `/api/*` to `API_TARGET` (default
 The interface calls the existing `/api/v1` endpoints and surfaces API errors
 instead of presenting failed requests as successful. Cloudinary behavior remains
 owned by the backend.
+
+## Render
+
+The repository-level `render.yaml` deploys this app as a Node web service and
+provides the API service hostname through `API_HOST`; the Next.js config adds
+HTTPS automatically. Use the Render Blueprint instructions in the root README
+to deploy both services together.

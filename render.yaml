@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: streamtweet-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 24.21.0
+      - key: MONGODB_URL
+        sync: false
+      - key: ACCESS_TOKEN_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRATION
+        value: 1d
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_EXPIRATION
+        value: 10d
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+  - type: web
+    name: streamtweet-web
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 24.21.0
+      - key: API_HOST
+        fromService:
+          type: web
+          name: streamtweet-api
+          property: host
