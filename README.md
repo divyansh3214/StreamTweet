@@ -7,6 +7,9 @@ From the repository root, run `npm run build` to build the Next.js frontend. The
 backend remains started with `npm start`, while the frontend app is built from
 [`frontend/package.json`](./frontend/package.json).
 
+The API service on port `8000` does not serve the old static social UI anymore.
+Use the Next.js frontend on port `5173` for the new StreamTweet experience.
+
 ## Deploy to Render
 
 This repository includes a Render Blueprint at [`render.yaml`](./render.yaml)

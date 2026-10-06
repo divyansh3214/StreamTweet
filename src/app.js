@@ -8,8 +8,17 @@ app.use(cors({
 }));
 app.use(express.json({limit:"1mb"}));
 app.use(express.urlencoded({extended:true,limit:"1mb"}));
-app.use(express.static("public"));
 app.use(cookieParser());
+
+app.get("/", (req, res) => {
+  const frontendUrl = process.env.FRONTEND_URL || process.env.API_TARGET || "http://127.0.0.1:5173";
+  res.json({
+    name: "StreamTweet API",
+    message: "This server provides the StreamTweet API. Open the Next.js frontend at the configured frontend URL to use the new UI.",
+    frontendUrl,
+    apiBase: "/api/v1"
+  });
+});
 
 import userRoutes from "./routes/user.routs.js";
 import videoRoutes from "./routes/video.routes.js";
