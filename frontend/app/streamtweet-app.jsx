@@ -5,7 +5,7 @@ import {
   Heart, History, Home, LogIn, LogOut, Menu, MessageCircle, MoreHorizontal,
   Plus, Search, Settings, Sparkles, UserRound, Video, X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const API = "/api/v1";
 const ACCESS_KEY = "streamtweet.access";
@@ -67,6 +67,7 @@ export default function StreamTweetApp() {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortType, setSortType] = useState("desc");
   const [mobileNav, setMobileNav] = useState(false);
+  const refreshRequest = useRef(null);
 
   const notify = useCallback((message) => {
     setToast(message);
@@ -94,13 +95,20 @@ export default function StreamTweetApp() {
     }
     if (response.status === 401 && canRefresh && path !== "/users/refresh-token" && sessionStorage.getItem(REFRESH_KEY)) {
       try {
-        const refresh = await api("/users/refresh-token", {
-          method: "POST",
-          body: JSON.stringify({ refreshToken: sessionStorage.getItem(REFRESH_KEY) }),
-        }, false);
-        if (!refresh.data?.accessToken) throw new Error("The refresh endpoint did not return an access token.");
-        sessionStorage.setItem(ACCESS_KEY, refresh.data.accessToken);
-        if (refresh.data.refreshToken) sessionStorage.setItem(REFRESH_KEY, refresh.data.refreshToken);
+        if (!refreshRequest.current) {
+          refreshRequest.current = api("/users/refresh-token", {
+            method: "POST",
+            body: JSON.stringify({ refreshToken: sessionStorage.getItem(REFRESH_KEY) }),
+          }, false).then((refresh) => {
+            if (!refresh.data?.accessToken) throw new Error("The refresh endpoint did not return an access token.");
+            sessionStorage.setItem(ACCESS_KEY, refresh.data.accessToken);
+            if (refresh.data.refreshToken) sessionStorage.setItem(REFRESH_KEY, refresh.data.refreshToken);
+            return refresh;
+          }).finally(() => {
+            refreshRequest.current = null;
+          });
+        }
+        await refreshRequest.current;
         return api(path, options, false);
       } catch (error) {
         throw new Error(`Your session could not be refreshed: ${error.message}`);
