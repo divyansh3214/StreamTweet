@@ -3,9 +3,10 @@ A hybrid social media platform that fuses YouTube’s video‑sharing ecosystem 
 
 ## Local build
 
-From the repository root, run `npm run build` to build the Next.js frontend. The
-backend remains started with `npm start`, while the frontend app is built from
-[`frontend/package.json`](./frontend/package.json).
+From the repository root, run `npm run dev` to start both the API and Next.js
+frontend for local development. The API is available on port `8000` and the
+frontend on port `5173`. Use `npm run dev:api` or `npm run dev:web` to start
+either service by itself. Run `npm run build` to build the frontend.
 
 The API service on port `8000` does not serve the old static social UI anymore.
 Use the Next.js frontend on port `5173` for the new StreamTweet experience.

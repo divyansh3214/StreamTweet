@@ -20,7 +20,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "dev": "concurrently --kill-others \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "dev:web": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build"
   },
   "dependencies": {
@@ -40,6 +42,7 @@
     "scripts": "^0.1.0"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "prettier": "^3.9.7"
   },
   "allowScripts": {
