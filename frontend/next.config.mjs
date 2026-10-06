@@ -7,6 +7,7 @@ if (!/^https?:\/\//.test(apiTarget)) {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: process.cwd(),
+  allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     return [
       {
