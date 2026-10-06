@@ -38,4 +38,5 @@ owned by the backend.
 The repository-level `render.yaml` deploys this app as a Node web service and
 provides the API service hostname through `API_HOST`; the Next.js config adds
 HTTPS automatically. Use the Render Blueprint instructions in the root README
-to deploy both services together.
+to deploy both services together. The production start command uses Render's
+assigned `PORT`, with port `5173` as the local fallback.
