@@ -1,5 +1,4 @@
 import {Router} from "express";
-import {registeruser} from "../controllers/user.conrollers.js";
 import upload from "../middlewares/multer.middleware.js";
 import { varifyJWT } from "../middlewares/auth.middleware.js";
 import { publishvideo } from "../controllers/video.controllers.js";
