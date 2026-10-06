@@ -147,6 +147,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .video-info > span { color: #8d8993; display: block; font-size: 9px; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-like { margin-left: auto; }
 .card-like:hover { color: #ff8eaa; }
+.card-like.liked, .detail-like.liked { color: #ff8eaa; }
 .video-management { border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 10px; }
 .video-management button,.update-actions button,.comment-actions button { background: none; border: 0; color: #9c98a2; cursor: pointer; font-size: 9px; padding: 5px 6px; }
 .video-management button:hover,.update-actions button:hover,.comment-actions button:hover { color: var(--lime); }

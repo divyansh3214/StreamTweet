@@ -55,6 +55,7 @@ export default function StreamTweetApp() {
   const [videos, setVideos] = useState([]);
   const [tweets, setTweets] = useState([]);
   const [liked, setLiked] = useState([]);
+  const [likedVideoIds, setLikedVideoIds] = useState(() => new Set());
   const [history, setHistory] = useState([]);
   const [channel, setChannel] = useState(null);
   const [activeVideo, setActiveVideo] = useState(null);
@@ -128,6 +129,7 @@ export default function StreamTweetApp() {
     setVideos([]);
     setTweets([]);
     setLiked([]);
+    setLikedVideoIds(new Set());
     setHistory([]);
   }, []);
 
@@ -160,7 +162,12 @@ export default function StreamTweetApp() {
         const result = await api(`/tweets/get-user-tweets?userid=${encodeURIComponent(user._id || user.id)}&page=1&limit=30`);
         setTweets(listFrom(result));
       }
-      if (target === "liked") setLiked(listFrom(await api("/likes/get-all-liked-videos")));
+      if (target === "liked") {
+        const result = await api("/likes/get-all-liked-videos");
+        const videos = listFrom(result).map((like) => like.videodetails).filter(Boolean);
+        setLiked(videos);
+        setLikedVideoIds(new Set(videos.map(idOf)));
+      }
       if (target === "history") setHistory(listFrom(await api("/users/watch-history")));
       if (target === "channel" && user.username) {
         const result = await api(`/users/channel-profile/${encodeURIComponent(user.username)}`);
@@ -170,6 +177,15 @@ export default function StreamTweetApp() {
       notify(error.message);
     }
   }, [api, fetchVideos, notify, page, user, videoQuery]);
+
+  useEffect(() => {
+    if (!user) return;
+    api("/likes/get-all-liked-videos").then((result) => {
+      const videos = listFrom(result).map((like) => like.videodetails).filter(Boolean);
+      setLiked(videos);
+      setLikedVideoIds(new Set(videos.map(idOf)));
+    }).catch((error) => notify(`Liked videos could not be loaded: ${error.message}`));
+  }, [api, notify, user]);
 
   useEffect(() => {
     try {
@@ -314,6 +330,16 @@ export default function StreamTweetApp() {
     const route = kind === "video" ? "video" : kind === "tweet" ? "tweet" : "comment";
     try {
       const result = await api(`/likes/toggle-${route}-like/${encodeURIComponent(id)}`, { method: "POST" });
+      if (kind === "video") {
+        const wasLiked = likedVideoIds.has(id);
+        setLikedVideoIds((current) => {
+          const next = new Set(current);
+          if (wasLiked) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+        if (wasLiked) setLiked((current) => current.filter((video) => idOf(video) !== id));
+      }
       notify(result.message || "Your like was updated.");
     } catch (error) { notify(error.message); }
   };
@@ -438,23 +464,23 @@ export default function StreamTweetApp() {
         </header>
 
         <div className="content-area">
-          {page === "home" && <HomePage user={user} videos={filteredVideos} onAction={handleHomeAction} onPage={navigate} onOpenVideo={openVideo} onLike={toggleLike} />}
-          {page === "videos" && <VideosPage videos={filteredVideos} user={user} query={videoQuery} setQuery={setVideoQuery} sortBy={sortBy} setSortBy={setSortBy} sortType={sortType} setSortType={setSortType} onSearch={() => loadPage("videos")} onUpload={() => requireUser("upload a video") && setModal({ type: "video-create" })} onOpen={openVideo} onLike={toggleLike} onEdit={(video) => setModal({ type: "video-edit", itemId: idOf(video), item: video })} onDelete={(video) => deleteItem("video", idOf(video))} onPublish={async (video) => { try { const result = await api(`/videos/toggle-publish-status/${encodeURIComponent(idOf(video))}`, { method: "PUT" }); await fetchVideos(); notify(result.message || "Visibility updated."); } catch (error) { notify(error.message); } }} />}
+          {page === "home" && <HomePage user={user} videos={filteredVideos} onAction={handleHomeAction} onPage={navigate} onOpenVideo={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
+          {page === "videos" && <VideosPage videos={filteredVideos} user={user} query={videoQuery} setQuery={setVideoQuery} sortBy={sortBy} setSortBy={setSortBy} sortType={sortType} setSortType={setSortType} onSearch={() => loadPage("videos")} onUpload={() => requireUser("upload a video") && setModal({ type: "video-create" })} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} onEdit={(video) => setModal({ type: "video-edit", itemId: idOf(video), item: video })} onDelete={(video) => deleteItem("video", idOf(video))} onPublish={async (video) => { try { const result = await api(`/videos/toggle-publish-status/${encodeURIComponent(idOf(video))}`, { method: "PUT" }); await fetchVideos(); notify(result.message || "Visibility updated."); } catch (error) { notify(error.message); } }} />}
           {page === "tweets" && <TweetsPage tweets={tweets.filter((item) => !query || (item.content || "").toLowerCase().includes(query.toLowerCase()))} user={user} onCreate={() => setModal({ type: "tweet-create" })} onLike={toggleLike} onEdit={(item) => setModal({ type: "tweet-edit", itemId: idOf(item), item })} onDelete={(item) => deleteItem("tweet", idOf(item))} />}
-          {page === "liked" && <VideosPage title="The replay list" eyebrow="YOUR FAVORITES" description="All the videos you’ve loved, together in one place." videos={liked.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} user={user} onOpen={openVideo} onLike={toggleLike} />}
+          {page === "liked" && <VideosPage title="The replay list" eyebrow="YOUR FAVORITES" description="All the videos you’ve loved, together in one place." videos={liked.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} user={user} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
           {page === "history" && <HistoryPage entries={history.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} onOpen={openVideo} />}
           {page === "channel" && <ChannelPage channel={channel} user={user} onFind={() => setModal({ type: "channel-search" })} onOpenVideo={openVideo} />}
           {page === "settings" && user && <SettingsPage user={user} api={api} setUser={(next) => { setUser(next); sessionStorage.setItem(USER_KEY, JSON.stringify(next)); }} onNotify={notify} onLogout={doLogout} />}
         </div>
       </main>
 
-      {modal && <Modal modal={modal} busy={busy} close={() => setModal(null)} submit={submitModal} activeVideo={activeVideo} comments={comments} user={user} onComment={createComment} onLike={toggleLike} onDelete={deleteItem} onEdit={(item) => setModal({ type: "comment-edit", itemId: idOf(item), item })} />}
+      {modal && <Modal modal={modal} busy={busy} close={() => setModal(null)} submit={submitModal} activeVideo={activeVideo} comments={comments} user={user} onComment={createComment} onLike={toggleLike} isActiveVideoLiked={likedVideoIds.has(idOf(activeVideo))} onDelete={deleteItem} onEdit={(item) => setModal({ type: "comment-edit", itemId: idOf(item), item })} />}
       {toast && <div className="toast"><span><Check size={16} /></span>{toast}</div>}
     </div>
   );
 }
 
-function HomePage({ user, videos, onAction, onPage, onOpenVideo, onLike }) {
+function HomePage({ user, videos, onAction, onPage, onOpenVideo, onLike, isVideoLiked }) {
   const featured = videos[0];
   return (
     <>
@@ -479,7 +505,7 @@ function HomePage({ user, videos, onAction, onPage, onOpenVideo, onLike }) {
       </div>
 
       {user && videos.length > 0 ? (
-        <div className="featured-grid">{videos.slice(0, 3).map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} onOpen={onOpenVideo} onLike={onLike} user={user} compact={index > 0} />)}</div>
+        <div className="featured-grid">{videos.slice(0, 3).map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} onOpen={onOpenVideo} onLike={onLike} user={user} isLiked={isVideoLiked(idOf(video))} compact={index > 0} />)}</div>
       ) : (
         <div className="discovery-grid">
           <button className="discovery-card discovery-purple" onClick={() => onAction(user ? "video-create" : "register")}><span className="discovery-number">01 / VIDEO</span><span className="discovery-illustration play-illustration"><Video size={38} /></span><strong>Stories worth<br />staying up for.</strong><span className="discovery-link">Explore videos <ArrowRight size={15} /></span></button>
@@ -497,14 +523,14 @@ function PageHeading({ eyebrow, title, description, action, buttonText }) {
   return <div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>{buttonText && <button className="button button-primary" onClick={action}><Plus size={17} />{buttonText}</button>}</div>;
 }
 
-function VideosPage({ videos, user, onOpen, onLike, onUpload, onEdit, onDelete, onPublish, query, setQuery, sortBy, setSortBy, sortType, setSortType, onSearch, title = "Your video universe", eyebrow = "THE WATCH LIST", description = "All the moments you’ve put into the world." }) {
+function VideosPage({ videos, user, onOpen, onLike, isVideoLiked, onUpload, onEdit, onDelete, onPublish, query, setQuery, sortBy, setSortBy, sortType, setSortType, onSearch, title = "Your video universe", eyebrow = "THE WATCH LIST", description = "All the moments you’ve put into the world." }) {
   return <><PageHeading eyebrow={eyebrow} title={title} description={description} action={onUpload} buttonText={onUpload ? "Upload video" : undefined} />
     {onSearch && <form className="filter-bar" onSubmit={(event) => { event.preventDefault(); onSearch(); }}><label className="filter-input"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your videos..." /></label><select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Sort by"><option value="createdAt">Recently added</option><option value="views">Most watched</option><option value="title">Title</option></select><button className="button button-outline" type="button" onClick={() => setSortType(sortType === "asc" ? "desc" : "asc")}><ArrowDownUp size={16} />{sortType === "desc" ? "Newest" : "Oldest"}</button><button className="button button-primary filter-go">Search</button></form>}
-    {videos.length ? <div className="video-grid">{videos.map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} user={user} onOpen={onOpen} onLike={onLike} onEdit={onEdit} onDelete={onDelete} onPublish={onPublish} />)}</div> : <EmptyState icon={<Film />} title="Nothing on the screen just yet." copy="Try another search, or share the first video in your collection." action={onUpload ? "Upload a video" : undefined} onClick={onUpload} />}
+    {videos.length ? <div className="video-grid">{videos.map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} user={user} onOpen={onOpen} onLike={onLike} isLiked={isVideoLiked(idOf(video))} onEdit={onEdit} onDelete={onDelete} onPublish={onPublish} />)}</div> : <EmptyState icon={<Film />} title="Nothing on the screen just yet." copy="Try another search, or share the first video in your collection." action={onUpload ? "Upload a video" : undefined} onClick={onUpload} />}
   </>;
 }
 
-function VideoCard({ video, index = 0, user, onOpen, onLike, onEdit, onDelete, onPublish, compact = false }) {
+function VideoCard({ video, index = 0, user, onOpen, onLike, isLiked = false, onEdit, onDelete, onPublish, compact = false }) {
   const owner = video.ownerdetails || {};
   const owned = user && ownerOf(video) === String(user._id || user.id);
   return <article className={`video-card ${compact ? "video-card-compact" : ""} ${index === 0 ? "video-card-featured" : ""}`}>
@@ -515,7 +541,7 @@ function VideoCard({ video, index = 0, user, onOpen, onLike, onEdit, onDelete, o
     <div className="video-meta">
       {!compact && <Avatar user={owner} size="small" />}
       <div className="video-info"><button className="video-title" onClick={() => onOpen(video)}>{video.title || "Untitled video"}</button><span>{owner.fullname || owner.username || "Your channel"} · {Number(video.views) || 0} views · {timeAgo(video.createdAt)}</span></div>
-      <button className="icon-btn card-like" aria-label="Like video" onClick={() => onLike("video", idOf(video))}><Heart size={17} /></button>
+      <button className={`icon-btn card-like ${isLiked ? "liked" : ""}`} aria-label={isLiked ? "Unlike video" : "Like video"} aria-pressed={isLiked} onClick={() => onLike("video", idOf(video))}><Heart size={17} fill={isLiked ? "currentColor" : "none"} /></button>
     </div>
     {!compact && <div className="video-management"><button onClick={() => onOpen(video)}>Details & comments</button>{owned && <><button onClick={() => onEdit(video)}>Edit</button><button onClick={() => onPublish(video)}>{video.isPublished ? "Unpublish" : "Publish"}</button><button className="danger-link" onClick={() => onDelete(video)}>Delete</button></>}</div>}
   </article>;
@@ -583,7 +609,7 @@ function EmptyState({ icon, title, copy, action, onClick }) {
   return <div className="empty-state"><span className="empty-icon">{icon}</span><h2>{title}</h2><p>{copy}</p>{action && <button className="button button-primary" onClick={onClick}>{action} <ArrowRight size={16} /></button>}</div>;
 }
 
-function Modal({ modal, busy, close, submit, activeVideo, comments, user, onComment, onLike, onDelete, onEdit }) {
+function Modal({ modal, busy, close, submit, activeVideo, comments, user, onComment, onLike, isActiveVideoLiked, onDelete, onEdit }) {
   const type = modal.type;
   const title = {
     login: "Welcome back.", register: "Your people are here.", "video-create": "Make a little movie magic.",
@@ -595,7 +621,7 @@ function Modal({ modal, busy, close, submit, activeVideo, comments, user, onComm
     "video-create": "Upload a video to your channel.", "tweet-create": "Share a thought with your community.",
     "channel-search": "Enter a username to open their channel.", "video-edit": "Update this video’s details.",
   }[type] || "";
-  if (type === "video-detail") return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><section className="detail-modal"><button className="modal-close" onClick={close}><X size={20} /></button><div className="detail-player-wrap">{activeVideo?.videofile ? <video src={activeVideo.videofile} controls autoPlay playsInline /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div><div className="detail-content"><span className="eyebrow">IN THE STREAM</span><h2>{activeVideo?.title || "A little something to watch."}</h2><p className="detail-description">{activeVideo?.description || "No description provided."}</p><div className="detail-owner"><Avatar user={activeVideo?.ownerdetails} size="small" /><span>{activeVideo?.ownerdetails?.fullname || "StreamTweet creator"} <small>· {Number(activeVideo?.views) || 0} views</small></span><button className="button button-outline detail-like" onClick={() => onLike("video", idOf(activeVideo))}><Heart size={16} /> Like</button></div><div className="comments-panel"><div className="comments-title"><div><h3>Say something nice.</h3><span>{comments.length} comments</span></div><MessageCircle size={19} /></div>{user ? <form className="comment-form" onSubmit={onComment}><input name="content" maxLength={1000} placeholder="Add to the conversation..." required /><button aria-label="Post comment" className="button button-primary"><ArrowRight size={16} /></button></form> : <p className="comment-signin">Log in to join the conversation.</p>}<div className="comments-list">{comments.map((comment) => <article className="comment-row" key={idOf(comment)}><Avatar user={comment.ownerdetails} size="small" /><div><strong>{comment.ownerdetails?.fullname || "Community member"} <small>{timeAgo(comment.createdAt)}</small></strong><p>{comment.content}</p><div className="comment-actions"><button onClick={() => onLike("comment", idOf(comment))}><Heart size={13} /> Like</button>{ownerOf(comment) === String(user?._id || user?.id) && <><button onClick={() => onEdit(comment)}>Edit</button><button className="danger-link" onClick={() => onDelete("comment", idOf(comment))}>Delete</button></>}</div></div></article>)}</div></div></div></section></div>;
+  if (type === "video-detail") return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><section className="detail-modal"><button className="modal-close" onClick={close}><X size={20} /></button><div className="detail-player-wrap">{activeVideo?.videofile ? <video src={activeVideo.videofile} controls autoPlay playsInline /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div><div className="detail-content"><span className="eyebrow">IN THE STREAM</span><h2>{activeVideo?.title || "A little something to watch."}</h2><p className="detail-description">{activeVideo?.description || "No description provided."}</p><div className="detail-owner"><Avatar user={activeVideo?.ownerdetails} size="small" /><span>{activeVideo?.ownerdetails?.fullname || "StreamTweet creator"} <small>· {Number(activeVideo?.views) || 0} views</small></span><button className={`button button-outline detail-like ${isActiveVideoLiked ? "liked" : ""}`} aria-label={isActiveVideoLiked ? "Unlike video" : "Like video"} aria-pressed={isActiveVideoLiked} onClick={() => onLike("video", idOf(activeVideo))}><Heart size={16} fill={isActiveVideoLiked ? "currentColor" : "none"} /> {isActiveVideoLiked ? "Liked" : "Like"}</button></div><div className="comments-panel"><div className="comments-title"><div><h3>Say something nice.</h3><span>{comments.length} comments</span></div><MessageCircle size={19} /></div>{user ? <form className="comment-form" onSubmit={onComment}><input name="content" maxLength={1000} placeholder="Add to the conversation..." required /><button aria-label="Post comment" className="button button-primary"><ArrowRight size={16} /></button></form> : <p className="comment-signin">Log in to join the conversation.</p>}<div className="comments-list">{comments.map((comment) => <article className="comment-row" key={idOf(comment)}><Avatar user={comment.ownerdetails} size="small" /><div><strong>{comment.ownerdetails?.fullname || "Community member"} <small>{timeAgo(comment.createdAt)}</small></strong><p>{comment.content}</p><div className="comment-actions"><button onClick={() => onLike("comment", idOf(comment))}><Heart size={13} /> Like</button>{ownerOf(comment) === String(user?._id || user?.id) && <><button onClick={() => onEdit(comment)}>Edit</button><button className="danger-link" onClick={() => onDelete("comment", idOf(comment))}>Delete</button></>}</div></div></article>)}</div></div></div></section></div>;
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><section className="form-modal"><button className="modal-close" onClick={close} aria-label="Close"><X size={20} /></button><span className="modal-mark"><Sparkles size={20} /></span><span className="eyebrow">STREAMTWEET / YOUR SPACE</span><h2>{title}</h2><p className="modal-copy">{copy}</p><form className="modal-form" onSubmit={submit}>
     {type === "login" && <><Field label="Email or username" name="identity" autoComplete="username" /><Field label="Password" name="password" type="password" autoComplete="current-password" /><button className="text-link auth-switch" type="button" onClick={() => { close(); window.dispatchEvent(new CustomEvent("open-register")); }}>New here? Create an account <ArrowRight size={14} /></button></>}
     {type === "register" && <><Field label="Full name" name="fullname" /><Field label="Email address" name="email" type="email" /><Field label="Username" name="username" /><Field label="Password (6+ characters)" name="password" type="password" minLength={6} /><Field label="Avatar image" name="avatar" type="file" accept="image/*" required /><Field label="Cover image (optional)" name="coverImage" type="file" accept="image/*" required={false} /></>}
