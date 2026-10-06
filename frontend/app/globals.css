@@ -331,7 +331,7 @@ button:disabled { opacity: .6; cursor: wait; }
   .video-info > span { font-size: 8px; }
   .video-title { white-space: normal; }
   .video-management { gap: 0; padding: 5px; }
-  .video-management button { font-size: 8px; padding: 5px; }
+  .video-management button { font-size: 11px; min-height: 44px; padding: 8px; touch-action: manipulation; }
   .featured-grid { gap: 10px; grid-template-columns: 1fr 1fr; }
   .featured-grid .video-card:first-child { grid-column: span 2; }
   .featured-grid .video-card:not(:first-child) { grid-column: span 1; }
