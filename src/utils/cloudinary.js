@@ -18,17 +18,29 @@ const uploadoncloudinary=async(localfilepath)=>{
         fs.unlinkSync(localfilepath)
         return response;
     }catch(error){
-      fs.unlinkSync(localfilepath);//remove the file from local storage
-      return null;
+      if(localfilepath && fs.existsSync(localfilepath)){
+        fs.unlinkSync(localfilepath);
+      }
+      throw error;
     } 
 }
 
 const publicurl=async(url)=>{
-    const parts = url.split('/');
-    const fileWithExt = parts.pop();
-    const fileName = fileWithExt.split('.')[0];
-    const folderPath = parts.slice(parts.indexOf('upload') + 1).join('/');
-    return folderPath ? `${folderPath}/${fileName}` : fileName;
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex === -1) {
+      throw new Error('Invalid Cloudinary asset URL');
+    }
+    const assetParts = parts.slice(uploadIndex + 1);
+    const hasVersion = /^v\d+$/.test(assetParts[0] || '');
+    const publicIdParts = hasVersion ? assetParts.slice(1) : assetParts;
+    const fileName = publicIdParts.pop();
+    if (!fileName) {
+      throw new Error('Cloudinary asset URL does not contain a public ID');
+    }
+    const extensionIndex = fileName.lastIndexOf('.');
+    publicIdParts.push(extensionIndex > -1 ? fileName.slice(0, extensionIndex) : fileName);
+    return publicIdParts.join('/');
 }
 
 const deleteoncloudinary=async(fileUrl)=>{
