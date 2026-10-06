@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import comments from "../models/comments.model.js";
-import ApiiError from "../utils/ApiError.js";
-import asyncHandler from "../utils/asyncHandler.js";
-import apiresponse from "../utils/ApiResponse.js";
+import { comments } from "../models/comments.model.js";
+import ApiiError from "../utils/Api_error.js";
+import { asyncHandler } from "../utils/async_handler.js";
+import apiresponse from "../utils/Api_response.js";
 
 const getvideocomments = asyncHandler(async (req, res) => {
   const { videoid } = req.params;
@@ -19,7 +19,7 @@ const getvideocomments = asyncHandler(async (req, res) => {
   const result = await comments.aggregate([
     {
       $match: {
-        video: mongoose.Types.ObjectId(videoid)
+        video: new mongoose.Types.ObjectId(videoid)
       }
     },
     {
@@ -127,4 +127,3 @@ const updatecomment = asyncHandler(async (req, res) => {
 });
 
 export { getvideocomments, addcomment, deletecomment, updatecomment };
-

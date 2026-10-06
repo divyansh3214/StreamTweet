@@ -4,10 +4,10 @@ import user from "../models/user.model.js";
 import apiresponse from "../utils/Api_response.js"
 const logoutuser=asyncHandler(async(req,res)=>{
   await user.findByIdAndUpdate(
-    req.loggedout,
+    req.loggedout?._id,
     {
-        $set:{
-            refreshToken:undefined
+        $unset:{
+            refreshToken:1
         }
     },
     {

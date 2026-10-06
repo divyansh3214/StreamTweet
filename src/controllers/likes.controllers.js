@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import ApiiError from "../utils/ApiError.js"; // ensure correct default/named export
-import asyncHandler from "express-async-handler";
-import likes from "../models/likes.model.js"; // ensure default export
-import apiresponse from "../utils/ApiResponse.js";
+import ApiiError from "../utils/Api_error.js";
+import { asyncHandler } from "../utils/async_handler.js";
+import { like as likes } from "../models/like.model.js";
+import apiresponse from "../utils/Api_response.js";
 
 const togglevideolike = asyncHandler(async (req, res) => {
   const { videoid } = req.params;
@@ -34,7 +34,7 @@ const togglevideolike = asyncHandler(async (req, res) => {
   const totallikes = await likes.aggregate([
     {
       $match: {
-        video: mongoose.Types.ObjectId(videoid)
+        video: new mongoose.Types.ObjectId(videoid)
       }
     },
     {
@@ -95,7 +95,7 @@ const toggleCommentlike = asyncHandler(async (req, res) => {
   const totallikes = await likes.aggregate([
     {
       $match: {
-        comment: mongoose.Types.ObjectId(commentid)
+        comment: new mongoose.Types.ObjectId(commentid)
       }
     },
     {
@@ -156,7 +156,7 @@ const toggleTweetlike = asyncHandler(async (req, res) => {
   const totallikes = await likes.aggregate([
     {
       $match: {
-        tweet: mongoose.Types.ObjectId(tweetid)
+        tweet: new mongoose.Types.ObjectId(tweetid)
       }
     },
     {
@@ -195,7 +195,7 @@ const getalllikedvideobyuser=asyncHandler(async(req,res)=>{
     const allvideos=await likes.aggregate([
         {
             $match:{
-                likedby:mongoose.Types.ObjectId(userId)
+                likedby:new mongoose.Types.ObjectId(userId)
             }
         },
         {
@@ -217,4 +217,3 @@ const getalllikedvideobyuser=asyncHandler(async(req,res)=>{
     .json(new apiresponse(200, { videos: allvideos }, "Liked videos retrieved successfully"));
 });
 export { togglevideolike, toggleCommentlike , toggleTweetlike, getalllikedvideobyuser};
-

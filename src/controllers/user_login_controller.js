@@ -1,4 +1,5 @@
 import { asyncHandler } from "../utils/async_handler.js";
+import mongoose from "mongoose";
 import ApiiError from "../utils/Api_error.js";
 import user from "../models/user.model.js";
 import apiresponse from "../utils/Api_response.js";
@@ -19,7 +20,7 @@ const generateaccessandrefreshtoken = async (findeduser) => {
 };
 
 const userlogin = asyncHandler(async (req, res) => {
-  const { email, username, password } = req.body;
+  const { email, username, password } = req.body || {};
 
   if (!email && !username) {
     throw new ApiiError(400, "Username or email required");
@@ -63,7 +64,7 @@ const userlogin = asyncHandler(async (req, res) => {
   )
 })
 const refreshaccesstoken=asyncHandler(async(req,res)=>{
-  const incomingtoken=req.cookies.refreshToken || req.body.refreshToken;
+  const incomingtoken=req.cookies?.refreshtoken || req.body?.refreshToken;
   if(!incomingtoken){
     throw new ApiiError(401,"Unauthorised Access");
   }
@@ -193,17 +194,13 @@ const getuserchannel_profile=asyncHandler(async(req,res)=>{
           as:"subscribedchannels"
        }
      },
-     $addFields({
-        subscriberscount:{$size:"$subscribers"},
-        subscribedchannelscount:{$size:"$subscribedchannels"},
-        issubscribed:{
-          $cond:{
-            if:{$in:[req.loggedout?._id,"$subscribers.subscriber"]},
-            then:true,
-            else:false
-          }
-        }
-     }),
+     {
+       $addFields:{
+         subscriberscount:{$size:"$subscribers"},
+         subscribedchannelscount:{$size:"$subscribedchannels"},
+         issubscribed:{$in:[req.loggedout?._id,"$subscribers.subscriber"]}
+       }
+     },
      {
       $project:{
        subscriberscount:1,

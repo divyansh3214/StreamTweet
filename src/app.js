@@ -14,7 +14,7 @@ app.use(cookieParser());
 import userRoutes from "./routes/user.routs.js";
 import videoRoutes from "./routes/video.routes.js";
 import tweetRoutes from "./routes/tweets.routes.js";
-import commentRoutes from "./routes/comment.routes.js";
+import commentRoutes from "./routes/comments.routes.js";
 import likeRoutes from "./routes/likes.routes.js";
 app.use("/api/v1/comments",commentRoutes);
 app.use("/api/v1/tweets",tweetRoutes);

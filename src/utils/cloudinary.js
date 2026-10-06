@@ -32,12 +32,14 @@ const publicurl=async(url)=>{
 }
 
 const deleteoncloudinary=async(fileUrl)=>{
-  const publicId=publicurl(fileUrl);
+  const publicId=await publicurl(fileUrl);
   try {
       const result = await cloudinary.uploader.destroy(publicId, { invalidate: true });
       console.log('Delete result:', result);
+      return result;
    } catch (err) {
       console.error('Error deleting file:', err);
+      throw err;
    }
 }
 export {deleteoncloudinary}

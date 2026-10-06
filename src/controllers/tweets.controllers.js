@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
-import asyncHandler from 'express-async-handler';
-import tweet from '../models/tweet.model.js';
+import { asyncHandler } from '../utils/async_handler.js';
+import { tweet } from '../models/tweet.model.js';
 import ApiiError from '../utils/Api_error.js';
 import apiresponse from '../utils/Api_response.js';
 import user from '../models/user.model.js';
 const createTweet = asyncHandler(async (req, res) => {
-  const { content } = req.body;
+  const content = req.body.content?.trim();
   const userId = req.loggedoutuser?._id;
 
   if (!content) {
@@ -29,7 +29,7 @@ const createTweet = asyncHandler(async (req, res) => {
   return res.status(201).json(new apiresponse(201, newTweet, 'Tweet created successfully'));
 });
 const getuserTweets = asyncHandler(async (req, res) => {
-  const { userid } = req.params;
+  const userid = req.params.userid || req.query.userid;
   const { page = 1, limit = 10 } = req.query;
 
   if (!userid) {
@@ -41,10 +41,12 @@ const getuserTweets = asyncHandler(async (req, res) => {
     throw new ApiiError(404, 'User not found');
   }
 
- const tweets=await tweet.agregate([
+ const pageNumber = Math.max(1, Number.parseInt(page, 10) || 1);
+ const pageLimit = Math.min(50, Math.max(1, Number.parseInt(limit, 10) || 10));
+ const tweets=await tweet.aggregate([
     {
       $match: {
-        owner: mongoose.Types.ObjectId(userid)
+        owner: new mongoose.Types.ObjectId(userid)
       }
     },
     {
@@ -74,10 +76,10 @@ const getuserTweets = asyncHandler(async (req, res) => {
       $sort: { createdAt: -1 } // Sort by creation date, newest first
     },
     {
-      $skip: (page - 1) * limit
+      $skip: (pageNumber - 1) * pageLimit
     },
     {
-      $limit: parseInt(limit)
+      $limit: pageLimit
     }
   ]);   
   return res.status(200).json(new apiresponse(200, tweets, 'User tweets fetched successfully'));

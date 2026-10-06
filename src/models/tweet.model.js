@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
-import mongoosePaginate from "mongoose-paginate-v2";
 const tweetschema=new mongoose.Schema({
+    content:{
+        type:String,
+        required:true,
+        trim:true
+    },
     owner:{
         type:mongoose.Types.ObjectId,
         ref:"User"
@@ -12,5 +16,4 @@ const tweetschema=new mongoose.Schema({
 },{
     timestamps:true
 });
-tweetschema.plugin(mongoosePaginate);
 export const tweet=mongoose.model("tweet",tweetschema);

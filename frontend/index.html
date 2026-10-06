@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="description" content="StreamTweet — videos, quick updates, and community." />
+    <title>StreamTweet — Your world, in motion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" id="sidebar">
+        <a class="brand" href="#" data-page="home">
+          <span class="brand-mark">S</span><span>stream<span class="brand-accent">tweet</span></span>
+        </a>
+        <nav class="primary-nav" aria-label="Main menu">
+          <p class="nav-label">YOUR SPACE</p>
+          <button class="nav-link active" data-page="home"><span class="nav-icon">⌂</span> Home</button>
+          <button class="nav-link" data-page="videos"><span class="nav-icon">▷</span> My videos</button>
+          <button class="nav-link" data-page="tweets"><span class="nav-icon">◉</span> My updates</button>
+          <button class="nav-link" data-page="liked"><span class="nav-icon">♡</span> Liked videos</button>
+          <button class="nav-link" data-page="history"><span class="nav-icon">◷</span> Watch history</button>
+          <button class="nav-link" data-page="channel"><span class="nav-icon">◎</span> Channel</button>
+          <p class="nav-label nav-label-lower">ACCOUNT</p>
+          <button class="nav-link" data-page="settings"><span class="nav-icon">⚙</span> Settings</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="avatar avatar-small" id="nav-avatar">S</div>
+          <div class="sidebar-user"><strong id="nav-name">Guest</strong><span id="nav-handle">Sign in to get started</span></div>
+          <button class="icon-button signout-button hidden" id="signout-button" title="Sign out" aria-label="Sign out">↗</button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <button class="mobile-menu" id="mobile-menu" aria-label="Toggle navigation">☰</button>
+          <div class="breadcrumb"><span>YOUR SPACE</span><b>/</b><strong id="page-title">Home</strong></div>
+          <div class="top-actions">
+            <label class="global-search"><span>⌕</span><input id="global-search" type="search" placeholder="Find something..." aria-label="Search current list" /><kbd>⌘ K</kbd></label>
+            <button class="button button-quiet" id="login-open">Log in</button>
+            <button class="button button-primary" id="register-open">Get started <span>↗</span></button>
+            <button class="avatar avatar-top hidden" id="top-avatar" title="Open settings"></button>
+          </div>
+        </header>
+        <section class="workspace" id="workspace" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <dialog class="dialog" id="dialog">
+      <form class="dialog-card" id="dialog-form">
+        <button class="dialog-close" type="button" data-close aria-label="Close">×</button>
+        <div id="dialog-content"></div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

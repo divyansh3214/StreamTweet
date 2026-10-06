@@ -13,10 +13,10 @@ export const varifyJWT=asyncHandler(async(req,res,next)=>{
       "-password -refreshToken"
     )
     if(!to_be_logged_out){
-      //next video=discuss aboyt frontend
       throw new ApiiError(401,"Invalid AccessToken")
     }
     req.loggedout=to_be_logged_out;
+    req.loggedoutuser=to_be_logged_out;
     next();
   } catch (error) {
     throw new ApiiError(401,error?.message || "invalid accesstoken")

@@ -1,5 +1,6 @@
 import ApiiError from "../utils/Api_error.js";
-import asyncHandler  from "../utils/async_handler.js";
+import mongoose from "mongoose";
+import { asyncHandler } from "../utils/async_handler.js";
 import apiresponse from "../utils/Api_response.js";
 import user from "../models/user.model.js";
 import uploadoncloudinary from "../utils/cloudinary.js";
@@ -17,55 +18,40 @@ const getallvideos = asyncHandler(async (req, res) => {
     throw new ApiiError(404, "user not found");
   }
 
-  // Build aggregation pipeline
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const safeLimit = Math.min(50, Math.max(1, Number.parseInt(limit, 10) || 10));
+  const sortFields = new Set(["createdAt", "title", "views", "duration"]);
+  const sortField = sortFields.has(sortBy) ? sortBy : "createdAt";
+  const search = query?.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pipeline = [
-    { $match: { _id: userexist._id } },
+    {
+      $match: {
+        owner: userexist._id,
+        ...(search ? { $or: [
+          { title: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } }
+        ] } : {})
+      }
+    },
     {
       $lookup: {
-        from: "videos",
-        localField: "_id",
-        foreignField: "owner",
-        as: "videos",
-        pipeline: [
-          // Search filter
-          ...(query ? [{
-            $match: {
-              $or: [
-                { title: { $regex: query, $options: "i" } },
-                { description: { $regex: query, $options: "i" } }
-              ]
-            }
-          }] : []),
-
-          // Owner details lookup
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "ownerdetails",
-              pipeline: [
-                { $project: { username: 1, fullname: 1, avatar: 1, coverImage: 1 } }
-              ]
-            }
-          },
-          { $addFields: { ownerdetails: { $arrayElemAt: ["$ownerdetails", 0] } } },
-
-          // Sorting
-          ...(sortBy ? [{
-            $sort: { [sortBy]: sortType === "desc" ? -1 : 1 }
-          }] : [])
-        ]
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerdetails",
+        pipeline: [{ $project: { username: 1, fullname: 1, avatar: 1, coverImage: 1 } }]
       }
-    }
+    },
+    { $addFields: { ownerdetails: { $arrayElemAt: ["$ownerdetails", 0] } } },
+    { $sort: { [sortField]: sortType === "asc" ? 1 : -1 } }
   ];
 
   const options = {
-    page: parseInt(page, 10),
-    limit: parseInt(limit, 10)
+    page: safePage,
+    limit: safeLimit
   };
 
-  const videolistthroughuser = await user.aggregatePaginate(user.aggregate(pipeline), options);
+  const videolistthroughuser = await video.aggregatePaginate(video.aggregate(pipeline), options);
 
   return res.status(200).json(new apiresponse(200, videolistthroughuser, "videos fetched successfully"));
 });
@@ -125,16 +111,27 @@ const deletevideo = asyncHandler(async (req, res) => {
 
   await deleteoncloudinary(videodetails.videofile);
   await deleteoncloudinary(videodetails.thumbnail);
-  await videodetails.remove();
+  await video.findByIdAndDelete(videoid);
 
   return res.status(200).json(new apiresponse(200, null, "video deleted successfully"));
 });
 
 const getvideobyid=asyncHandler(async(req,res)=>{
-    const videoid=req.params;
+    const { videoid }=req.params;
     if(!videoid){
         throw new ApiiError(400,"videoid is required")
     }
+    const updatedVideo = await video.findByIdAndUpdate(
+      videoid,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+    if (!updatedVideo) {
+      throw new ApiiError(404, "video not found");
+    }
+    await user.findByIdAndUpdate(req.loggedoutuser?._id, {
+      $addToSet: { watchhistory: updatedVideo._id }
+    });
     const videodetails = await video.aggregate([
   {
     $match: {
@@ -229,4 +226,3 @@ const toglepublishstatus=asyncHandler(async(req,res)=>{
     return res.status(200).json(new apiresponse(200,videodetails,"video publish status toggled successfully"))
 })
 export {getallvideos, publishvideo, deletevideo, getvideobyid, updatevideo, toglepublishstatus};
-
