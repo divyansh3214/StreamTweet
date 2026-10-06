@@ -17,4 +17,16 @@ const likeschema=new mongoose.Schema({
         ref:"User"
     }
 },{timestamps:true});
+
+likeschema.index(
+    {video:1,likedby:1},
+    {
+        unique:true,
+        partialFilterExpression:{
+            video:{$exists:true},
+            likedby:{$exists:true}
+        }
+    }
+);
+
 export const like=mongoose.model("like",likeschema);

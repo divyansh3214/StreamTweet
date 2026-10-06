@@ -21,13 +21,19 @@ const togglevideolike = asyncHandler(async (req, res) => {
   });
 
   if (existingLike) {
-    await likes.findByIdAndDelete(existingLike._id);
-  } else {
-    // Like (add)
-    await likes.create({
+    await likes.deleteMany({
       video: videoid,
       likedby: userId
     });
+  } else {
+    try {
+      await likes.create({
+        video: videoid,
+        likedby: userId
+      });
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+    }
   }
 
   // Get updated total likes with user details
@@ -195,8 +201,21 @@ const getalllikedvideobyuser=asyncHandler(async(req,res)=>{
     const allvideos=await likes.aggregate([
         {
             $match:{
-                likedby:new mongoose.Types.ObjectId(userId)
+                likedby:new mongoose.Types.ObjectId(userId),
+                video:{$exists:true,$ne:null}
             }
+        },
+        {
+            $sort:{createdAt:-1}
+        },
+        {
+            $group:{
+                _id:"$video",
+                like:{$first:"$$ROOT"}
+            }
+        },
+        {
+            $replaceRoot:{newRoot:"$like"}
         },
         {
             $lookup:{
