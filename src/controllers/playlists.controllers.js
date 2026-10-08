@@ -17,9 +17,15 @@ const findOwnedPlaylist = async (req, playlistid) => {
 };
 
 const createPlaylist = asyncHandler(async (req, res) => {
-  const name = req.body.name?.trim();
-  const description = req.body.description?.trim() || "";
-  if (!name) throw new ApiiError(400, "playlist name is required");
+  const { name: submittedName, description: submittedDescription = "" } = req.body || {};
+  if (typeof submittedName !== "string" || !submittedName.trim()) {
+    throw new ApiiError(400, "playlist name is required");
+  }
+  if (typeof submittedDescription !== "string") {
+    throw new ApiiError(400, "playlist description must be text");
+  }
+  const name = submittedName.trim();
+  const description = submittedDescription.trim();
 
   const playlistExist = await playlist.findOne({ name, owner: req.loggedoutuser._id });
   if (playlistExist) throw new ApiiError(400, "playlist already exists");
@@ -109,10 +115,15 @@ const updateplaylist = asyncHandler(async (req, res) => {
     throw new ApiiError(400, "playlist name or description is required");
   }
   if (name !== undefined) {
-    if (!name.trim()) throw new ApiiError(400, "playlist name cannot be empty");
+    if (typeof name !== "string" || !name.trim()) {
+      throw new ApiiError(400, "playlist name must be non-empty text");
+    }
     playlistdata.name = name.trim();
   }
-  if (description !== undefined) playlistdata.description = description.trim();
+  if (description !== undefined) {
+    if (typeof description !== "string") throw new ApiiError(400, "playlist description must be text");
+    playlistdata.description = description.trim();
+  }
 
   await playlistdata.save();
   res.status(200).json({
