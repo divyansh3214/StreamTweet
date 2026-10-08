@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/async_handler.js";
 import mongoose from "mongoose";
 import ApiiError from "../utils/Api_error.js";
 import user from "../models/user.model.js";
+import video from "../models/video.model.js";
 import apiresponse from "../utils/Api_response.js";
 import jwt from "jsonwebtoken";
 import uploadoncloudinary from "../utils/cloudinary.js";
@@ -213,11 +214,28 @@ const getuserchannel_profile=asyncHandler(async(req,res)=>{
       }
      }
    ])
-   console.log(channel)
    if(!channel?.length){
     throw new ApiiError(404,"channel not found");
    }
-   return res.status(200).json(new apiresponse(200, channel[0], "channel profile fetched successfully"));
+   const channelProfile = channel[0];
+   const isOwnChannel = String(channelProfile._id) === String(req.loggedout?._id);
+   const channelVideos = await video.find({
+     owner: channelProfile._id,
+     ...(isOwnChannel ? {} : { isPublished: true })
+   }).sort({ createdAt: -1 }).lean();
+   const videosWithOwner = channelVideos.map((channelVideo) => ({
+     ...channelVideo,
+     ownerdetails: {
+       _id: channelProfile._id,
+       username: channelProfile.username,
+       fullname: channelProfile.fullname,
+       avatar: channelProfile.avatar,
+     }
+   }));
+   return res.status(200).json(new apiresponse(200, {
+     ...channelProfile,
+     videos: videosWithOwner
+   }, "channel profile fetched successfully"));
 });
 const getwatch_history=asyncHandler(async(req,res)=>{
    const USER=await user.aggregate([
