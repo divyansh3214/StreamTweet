@@ -25,6 +25,8 @@ import videoRoutes from "./routes/video.routes.js";
 import tweetRoutes from "./routes/tweets.routes.js";
 import commentRoutes from "./routes/comments.routes.js";
 import likeRoutes from "./routes/likes.routes.js";
+import playlistRoutes from "./routes/playlists.routes.js";
+app.use("/api/v1/playlists",playlistRoutes);
 app.use("/api/v1/comments",commentRoutes);
 app.use("/api/v1/tweets",tweetRoutes);
 app.use("/api/v1/videos",videoRoutes);
