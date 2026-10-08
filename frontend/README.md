@@ -28,6 +28,8 @@ The Next.js rewrite proxies `/api/*` to `API_TARGET` (default
 - Updates: create, list, edit, delete, and like.
 - Comments: list, create, edit, delete, and like.
 - Likes and history: liked videos and watch history.
+- Playlists: create, list, edit, and delete playlists, then add or remove your
+  videos from each collection.
 
 The interface calls the existing `/api/v1` endpoints and surfaces API errors
 instead of presenting failed requests as successful. Cloudinary behavior remains

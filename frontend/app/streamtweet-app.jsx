@@ -628,7 +628,7 @@ function VideoCard({ video, index = 0, user, onOpen, onLike, isLiked = false, on
       <div className="video-info"><button className="video-title" onClick={() => onOpen(video)}>{video.title || "Untitled video"}</button><span>{owner.fullname || owner.username || "Your channel"} · {Number(video.views) || 0} views · {timeAgo(video.createdAt)}</span></div>
       <button className={`icon-btn card-like ${isLiked ? "liked" : ""}`} aria-label={isLiked ? "Unlike video" : "Like video"} aria-pressed={isLiked} onClick={() => onLike("video", idOf(video))}><Heart size={17} fill={isLiked ? "currentColor" : "none"} /></button>
     </div>
-    {(!compact && showManagement || onRemoveFromPlaylist) && <div className="video-management">{!compact && showManagement && <><button onClick={() => onOpen(video)}>Details & comments</button>{owned && <><button onClick={() => onEdit(video)}>Edit</button><button onClick={() => onPublish(video)}>{video.isPublished ? "Unpublish" : "Publish"}</button><button className="danger-link" onClick={() => onDelete(video)}>Delete</button></>}</>}</div>}
+    {(!compact && showManagement || onRemoveFromPlaylist) && <div className="video-management">{!compact && showManagement && <><button onClick={() => onOpen(video)}>Details & comments</button>{owned && <><button onClick={() => onEdit(video)}>Edit</button><button onClick={() => onPublish(video)}>{video.isPublished ? "Unpublish" : "Publish"}</button><button className="danger-link" onClick={() => onDelete(video)}>Delete</button></>}</>}{onRemoveFromPlaylist && <button className="danger-link" onClick={() => onRemoveFromPlaylist(video)}>Remove from playlist</button>}</div>}
   </article>;
 }
 
