@@ -9,7 +9,7 @@ const playlistschema=new mongoose.Schema({
         type:mongoose.Types.ObjectId,
         ref:"User"
     },
-    discription:{
+    description:{
         type:String,
         default:""
     },
