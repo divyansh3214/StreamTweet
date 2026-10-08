@@ -239,6 +239,10 @@ export default function StreamTweetApp() {
   };
 
   const openChannel = async (username) => {
+    if (!username) {
+      notify("Enter a username to find a channel.");
+      return;
+    }
     try {
       const result = await api(`/users/channel-profile/${encodeURIComponent(username)}`);
       setChannel(result.data);
@@ -307,6 +311,13 @@ export default function StreamTweetApp() {
     setModal({ type: "login" });
     notify(`Log in to ${feature}.`);
     return false;
+  };
+
+  const searchChannel = (event) => {
+    event.preventDefault();
+    const username = query.trim().replace(/^@/, "");
+    if (!username) return;
+    if (requireUser("find a channel")) openChannel(username);
   };
 
   const submitModal = async (event) => {
@@ -540,7 +551,11 @@ export default function StreamTweetApp() {
           <button className="mobile-menu icon-btn" onClick={() => setMobileNav(!mobileNav)} aria-label="Toggle menu"><Menu size={20} /></button>
           <div className="breadcrumb"><span>YOUR SPACE</span><b>/</b><strong>{page === "home" ? "Discover" : page === "playlist-detail" ? activePlaylist?.name || "Playlist" : navItems.find(([key]) => key === page)?.[1] || "Settings"}</strong></div>
           <div className="topbar-actions">
-            <label className="search-box"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find your next favorite..." /><kbd>⌘ K</kbd></label>
+            <form className="search-box" onSubmit={searchChannel} title="Enter a username to open a creator channel">
+              <button className="search-submit" type="submit" aria-label="Find a channel"><Search size={17} /></button>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search content or find a creator channel" placeholder="Search videos or find a channel..." />
+              <kbd>⌘ K</kbd>
+            </form>
             {user ? <button className="icon-btn notification-button" title="Notifications"><Bell size={18} /><i /></button> : <button className="button button-quiet" onClick={() => setModal({ type: "login" })}>Log in</button>}
             {user ? <button className="avatar-trigger" onClick={() => navigate("settings")}><Avatar user={user} size="small" /><ChevronDown size={14} /></button> : <button className="button button-primary top-join" onClick={() => setModal({ type: "register" })}>Join the vibe <ArrowRight size={16} /></button>}
           </div>
@@ -680,7 +695,7 @@ function PlaylistDetailPage({ playlist, videos, user, onBack, onEdit, onAddVideo
 function ChannelPage({ channel, user, onFind, onOpenVideo }) {
   const profile = channel?.user || channel?.channel || channel;
   const channelVideos = channel?.videos || channel?.userVideos || [];
-  return <><PageHeading eyebrow="YOUR CORNER OF STREAMTWEET" title={profile?.fullname || profile?.username || "Find a channel"} description={profile?.username ? `@${profile.username} · ${channelVideos.length} videos` : "Look up a creator by their username."} action={onFind} buttonText={profile?.username ? "Find another" : "Find a channel"} />
+  return <><PageHeading eyebrow="YOUR CORNER OF STREAMTWEET" title={profile?.fullname || profile?.username || "Find a channel"} description={profile?.username ? `@${profile.username} · ${channelVideos.length} videos` : "Look up a creator by their username."} action={profile?.username ? undefined : onFind} buttonText={profile?.username ? undefined : "Find a channel"} />
     {profile?.username ? <><div className="channel-cover" style={{ backgroundImage: `linear-gradient(90deg,rgba(14,13,21,.8),rgba(14,13,21,.1)),url("${profile.coverImage || fallbackArt}")` }}><Avatar user={profile} size="large" /><div><span className="eyebrow">CREATOR SPACE</span><h2>{profile.fullname || profile.username}</h2><span>@{profile.username}</span></div></div>{channelVideos.length ? <div className="video-grid">{channelVideos.map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} user={user} onOpen={onOpenVideo} onLike={() => {}} />)}</div> : <EmptyState icon={<Film />} title="No videos to show yet." copy="This channel’s next story is still loading." />}</> : <EmptyState icon={<Compass />} title="Your next favorite creator is out there." copy="Enter a username to open their channel." action="Find a channel" onClick={onFind} />}
   </>;
 }

@@ -63,6 +63,8 @@ button:disabled { opacity: .6; cursor: wait; }
 .breadcrumb strong { font: 600 12px "Manrope", sans-serif; }
 .topbar-actions { align-items: center; display: flex; gap: 13px; }
 .search-box { align-items: center; background: #1b1a20; border: 1px solid rgba(255,255,255,.065); border-radius: 10px; color: var(--muted); display: flex; gap: 9px; height: 39px; padding: 0 10px 0 12px; width: clamp(205px, 27vw, 340px); }
+.search-submit { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: inline-flex; flex: 0 0 auto; justify-content: center; padding: 0; }
+.search-submit:hover { color: var(--lime); }
 .search-box input { background: transparent; border: 0; color: var(--text); font-size: 11px; min-width: 0; outline: 0; width: 100%; }
 .search-box input::placeholder { color: #77737d; }
 .search-box kbd { background: #29272f; border-radius: 4px; color: #77737d; font: 9px "DM Sans", sans-serif; padding: 3px 5px; white-space: nowrap; }
