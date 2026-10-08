@@ -710,8 +710,20 @@ function ChannelPage({ channel, user, onFind, onOpenVideo }) {
     {profile?.username ? <><div className="channel-cover" style={{ backgroundImage: `linear-gradient(90deg,rgba(14,13,21,.8),rgba(14,13,21,.1)),url("${profile.coverImage || fallbackArt}")` }}><Avatar user={profile} size="large" /><div><span className="eyebrow">CREATOR SPACE</span><h2>{profile.fullname || profile.username}</h2><span>@{profile.username}</span></div></div>
       {channelPlaylists.length > 0 && <div className="channel-playlist-filter"><label htmlFor="channel-playlist">Browse playlists</label><select id="channel-playlist" value={selectedPlaylistId} onChange={(event) => setSelectedPlaylistId(event.target.value)}><option value="">All videos</option>{channelPlaylists.map((playlist) => <option key={idOf(playlist)} value={idOf(playlist)}>{playlist.name}</option>)}</select></div>}
       {displayedVideos.length ? <div className="video-grid">{displayedVideos.map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} user={user} onOpen={onOpenVideo} onLike={() => {}} />)}</div> : <EmptyState icon={<Film />} title={selectedPlaylist ? "No videos in this playlist yet." : "No videos to show yet."} copy={selectedPlaylist ? "This playlist does not have any videos available on this channel." : "This channel’s next story is still loading."} />}
+      <ChannelTweets tweets={channel?.tweets || []} onOpenVideo={onOpenVideo} />
     </> : <EmptyState icon={<Compass />} title="Your next favorite creator is out there." copy="Enter a username to open their channel." action="Find a channel" onClick={onFind} />}
   </>;
+}
+
+function ChannelTweets({ tweets, onOpenVideo }) {
+  return <section className="channel-updates">
+    <div className="section-intro"><div><span className="eyebrow">AROUND THE COMMUNITY</span><h2>Recent updates</h2><p>Thoughts shared by this creator.</p></div></div>
+    {tweets.length ? <div className="channel-update-list">{tweets.map((item) => <article className="channel-update" key={idOf(item)}>
+      <Avatar user={item.ownerdetails} size="small" />
+      <div className="channel-update-content"><p>{item.content}</p>{item.video && <button className="channel-update-video" onClick={() => onOpenVideo(item.video)}><Video size={14} /> On “{item.video.title || "Untitled video"}” <ArrowRight size={13} /></button>}</div>
+      <span className="channel-update-time">{timeAgo(item.createdAt)}</span>
+    </article>)}</div> : <EmptyState icon={<MessageCircle />} title="No updates to show yet." copy="Posts shared by this creator will appear here." />}
+  </section>;
 }
 
 function SettingsPage({ user, api, setUser, onNotify, onLogout }) {

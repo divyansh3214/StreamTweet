@@ -4,6 +4,7 @@ import ApiiError from "../utils/Api_error.js";
 import user from "../models/user.model.js";
 import video from "../models/video.model.js";
 import { playlist } from "../models/playlist.model.js";
+import { tweet } from "../models/tweet.model.js";
 import apiresponse from "../utils/Api_response.js";
 import jwt from "jsonwebtoken";
 import uploadoncloudinary from "../utils/cloudinary.js";
@@ -229,6 +230,31 @@ const getuserchannel_profile=asyncHandler(async(req,res)=>{
      .select("_id name description videos createdAt")
      .sort({ createdAt: -1 })
      .lean();
+   const channelTweets = await tweet.find({ owner: channelProfile._id })
+     .sort({ createdAt: -1 })
+     .limit(50)
+     .populate({
+       path: "video",
+       select: "title thumbnail owner isPublished"
+     })
+     .lean();
+   const visibleChannelTweets = channelTweets.map((channelTweet) => ({
+       ...channelTweet,
+       ownerdetails: {
+         _id: channelProfile._id,
+         username: channelProfile.username,
+         fullname: channelProfile.fullname,
+         avatar: channelProfile.avatar,
+       },
+       video: channelTweet.video && (isOwnChannel || channelTweet.video.isPublished)
+         ? {
+             _id: channelTweet.video._id,
+             title: channelTweet.video.title,
+             thumbnail: channelTweet.video.thumbnail,
+             owner: channelTweet.video.owner,
+           }
+         : null
+     }));
    const videosWithOwner = channelVideos.map((channelVideo) => ({
      ...channelVideo,
      ownerdetails: {
@@ -241,6 +267,7 @@ const getuserchannel_profile=asyncHandler(async(req,res)=>{
    return res.status(200).json(new apiresponse(200, {
      ...channelProfile,
      videos: videosWithOwner,
+     tweets: visibleChannelTweets,
      playlists: channelPlaylists.map((channelPlaylist) => ({
        ...channelPlaylist,
        videos: channelPlaylist.videos

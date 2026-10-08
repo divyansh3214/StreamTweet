@@ -21,8 +21,9 @@ The Next.js rewrite proxies `/api/*` to `API_TARGET` (default
 
 ## API-backed screens
 
-- Accounts: register, login, logout, token refresh, current user, channel lookup,
-  watch history, profile details, password, and avatar updates.
+- Accounts: register, login, logout, token refresh, current user, channel lookup
+  with creator videos, playlists, and recent tweets, watch history, profile
+  details, password, and avatar updates.
 - Videos: upload, list/search/sort, details and playback, comments, likes, edit,
   publication status, and delete.
 - Updates: create, list, edit, delete, and like.
