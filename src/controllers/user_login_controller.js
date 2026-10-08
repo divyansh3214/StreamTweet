@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import ApiiError from "../utils/Api_error.js";
 import user from "../models/user.model.js";
 import video from "../models/video.model.js";
+import { playlist } from "../models/playlist.model.js";
 import apiresponse from "../utils/Api_response.js";
 import jwt from "jsonwebtoken";
 import uploadoncloudinary from "../utils/cloudinary.js";
@@ -223,6 +224,11 @@ const getuserchannel_profile=asyncHandler(async(req,res)=>{
      owner: channelProfile._id,
      ...(isOwnChannel ? {} : { isPublished: true })
    }).sort({ createdAt: -1 }).lean();
+   const visibleVideoIds = new Set(channelVideos.map((channelVideo) => String(channelVideo._id)));
+   const channelPlaylists = await playlist.find({ owner: channelProfile._id })
+     .select("_id name description videos createdAt")
+     .sort({ createdAt: -1 })
+     .lean();
    const videosWithOwner = channelVideos.map((channelVideo) => ({
      ...channelVideo,
      ownerdetails: {
@@ -234,7 +240,13 @@ const getuserchannel_profile=asyncHandler(async(req,res)=>{
    }));
    return res.status(200).json(new apiresponse(200, {
      ...channelProfile,
-     videos: videosWithOwner
+     videos: videosWithOwner,
+     playlists: channelPlaylists.map((channelPlaylist) => ({
+       ...channelPlaylist,
+       videos: channelPlaylist.videos
+         .filter((videoId) => visibleVideoIds.has(String(videoId)))
+         .map(String)
+     }))
    }, "channel profile fetched successfully"));
 });
 const getwatch_history=asyncHandler(async(req,res)=>{

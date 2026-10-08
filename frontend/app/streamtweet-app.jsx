@@ -508,7 +508,7 @@ export default function StreamTweetApp() {
   const navItems = [
     ["home", "Discover", Home], ["videos", "My videos", Film], ["tweets", "Updates", MessageCircle],
     ["liked", "Liked", Heart], ["history", "History", History], ["playlists", "Playlists", ListVideo],
-    ["channel", "My channel", UserRound],
+    ["channel", "Channel", UserRound],
   ];
 
   return (
@@ -695,11 +695,22 @@ function PlaylistDetailPage({ playlist, videos, user, onBack, onEdit, onAddVideo
 function ChannelPage({ channel, user, onFind, onOpenVideo }) {
   const profile = channel?.user || channel?.channel || channel;
   const videos = channel?.videos || channel?.userVideos || [];
+  const channelPlaylists = channel?.playlists || [];
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
+  useEffect(() => setSelectedPlaylistId(""), [profile?._id]);
   const channelVideos = profile?._id
     ? videos.filter((video) => ownerOf(video) === String(profile._id))
     : videos;
-  return <><PageHeading eyebrow="YOUR CORNER OF STREAMTWEET" title={profile?.fullname || profile?.username || "Find a channel"} description={profile?.username ? `@${profile.username} · ${channelVideos.length} videos` : "Look up a creator by their username."} action={profile?.username ? undefined : onFind} buttonText={profile?.username ? undefined : "Find a channel"} />
-    {profile?.username ? <><div className="channel-cover" style={{ backgroundImage: `linear-gradient(90deg,rgba(14,13,21,.8),rgba(14,13,21,.1)),url("${profile.coverImage || fallbackArt}")` }}><Avatar user={profile} size="large" /><div><span className="eyebrow">CREATOR SPACE</span><h2>{profile.fullname || profile.username}</h2><span>@{profile.username}</span></div></div>{channelVideos.length ? <div className="video-grid">{channelVideos.map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} user={user} onOpen={onOpenVideo} onLike={() => {}} />)}</div> : <EmptyState icon={<Film />} title="No videos to show yet." copy="This channel’s next story is still loading." />}</> : <EmptyState icon={<Compass />} title="Your next favorite creator is out there." copy="Enter a username to open their channel." action="Find a channel" onClick={onFind} />}
+  const selectedPlaylist = channelPlaylists.find((playlist) => idOf(playlist) === selectedPlaylistId);
+  const selectedVideoIds = new Set((selectedPlaylist?.videos || []).map(String));
+  const displayedVideos = selectedPlaylist
+    ? channelVideos.filter((video) => selectedVideoIds.has(idOf(video)))
+    : channelVideos;
+  return <><PageHeading eyebrow="YOUR CORNER OF STREAMTWEET" title={profile?.fullname || profile?.username || "Find a channel"} description={profile?.username ? `@${profile.username} · ${displayedVideos.length} videos` : "Look up a creator by their username."} action={profile?.username ? undefined : onFind} buttonText={profile?.username ? undefined : "Find a channel"} />
+    {profile?.username ? <><div className="channel-cover" style={{ backgroundImage: `linear-gradient(90deg,rgba(14,13,21,.8),rgba(14,13,21,.1)),url("${profile.coverImage || fallbackArt}")` }}><Avatar user={profile} size="large" /><div><span className="eyebrow">CREATOR SPACE</span><h2>{profile.fullname || profile.username}</h2><span>@{profile.username}</span></div></div>
+      {channelPlaylists.length > 0 && <div className="channel-playlist-filter"><label htmlFor="channel-playlist">Browse playlists</label><select id="channel-playlist" value={selectedPlaylistId} onChange={(event) => setSelectedPlaylistId(event.target.value)}><option value="">All videos</option>{channelPlaylists.map((playlist) => <option key={idOf(playlist)} value={idOf(playlist)}>{playlist.name}</option>)}</select></div>}
+      {displayedVideos.length ? <div className="video-grid">{displayedVideos.map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} user={user} onOpen={onOpenVideo} onLike={() => {}} />)}</div> : <EmptyState icon={<Film />} title={selectedPlaylist ? "No videos in this playlist yet." : "No videos to show yet."} copy={selectedPlaylist ? "This playlist does not have any videos available on this channel." : "This channel’s next story is still loading."} />}
+    </> : <EmptyState icon={<Compass />} title="Your next favorite creator is out there." copy="Enter a username to open their channel." action="Find a channel" onClick={onFind} />}
   </>;
 }
 
