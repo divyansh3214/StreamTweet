@@ -12,6 +12,7 @@ const create_reply=asyncHandler(async(req,res)=>{
      return ApiiError(402,"Write a comment"); 
    }
    const user_id=req.loggedout?._id;
+   if(await user.findbyId())
    if(!user_id){
      throw new ApiError(405,"User id required");
    }
@@ -33,6 +34,6 @@ const delete_reply=asyncHandler(async(req,res)=>{
 
 })
 const update_reply=asyncHandler(async(req,res)=>{
-    
+
 })
 
