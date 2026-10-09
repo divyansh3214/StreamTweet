@@ -871,6 +871,11 @@ function ThreadReply({ item, user, api, notify, requireUser, onDeleted }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [content, setContent] = useState(item.content || "");
+  const [editContent, setEditContent] = useState(item.content || "");
+  const [liked, setLiked] = useState(() => item.liked?.some((likedUser) => String(likedUser?._id || likedUser) === String(user?._id || user?.id)) || false);
   const replyOwner = typeof item.owner === "object" ? item.owner : ownerOf(item) === String(user?._id || user?.id) ? user : null;
   const isOwner = ownerOf(item) === String(user?._id || user?.id);
 
@@ -925,14 +930,55 @@ function ThreadReply({ item, user, api, notify, requireUser, onDeleted }) {
     }
   };
 
+  const toggleReplyLike = async () => {
+    if (!requireUser("like a reply")) return;
+    try {
+      const result = await api(`/replies/like-reply/${encodeURIComponent(idOf(item))}`, { method: "POST" });
+      setLiked((current) => !current);
+      notify(result.message || "Reply like updated.");
+    } catch (error) {
+      notify(error.message);
+    }
+  };
+
+  const saveEdit = async (event) => {
+    event.preventDefault();
+    const nextContent = editContent.trim();
+    if (!nextContent) {
+      notify("Reply content is required.");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const result = await api(`/replies/update-reply/${encodeURIComponent(idOf(item))}`, {
+        method: "PUT",
+        body: JSON.stringify({ content: nextContent }),
+      });
+      setContent(result.data?.content || nextContent);
+      setEditContent(result.data?.content || nextContent);
+      setEditing(false);
+      notify(result.message || "Reply updated.");
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   return <article className="thread-reply">
     <Avatar user={replyOwner} size="small" />
     <div className="thread-reply-content">
       <strong>{replyOwner?.fullname || "Community member"} <small>· {timeAgo(item.createdAt)}</small></strong>
-      <p>{item.content}</p>
+      {editing
+        ? <form className="thread-reply-edit" onSubmit={saveEdit}>
+          <textarea aria-label="Edit reply" maxLength={1000} value={editContent} onChange={(event) => setEditContent(event.target.value)} required />
+          <div className="comment-actions"><button type="submit" disabled={savingEdit}>{savingEdit ? "Saving..." : "Save"}</button><button type="button" onClick={() => { setEditContent(content); setEditing(false); }}>Cancel</button></div>
+        </form>
+        : <p>{content}</p>}
       <div className="comment-actions">
+        <button className={liked ? "liked" : ""} aria-pressed={liked} onClick={toggleReplyLike}><Heart size={13} fill={liked ? "currentColor" : "none"} />{liked ? "Liked" : "Like"}</button>
         <button aria-expanded={expanded} onClick={toggleReplies}><MessageCircle size={13} />{expanded ? "Hide replies" : "Reply"}</button>
-        {isOwner && <button className="danger-link" onClick={deleteReply}>Delete</button>}
+        {isOwner && !editing && <><button onClick={() => { setEditContent(content); setEditing(true); }}>Edit</button><button className="danger-link" onClick={deleteReply}>Delete</button></>}
       </div>
       {expanded && <div className="thread-nested-replies">
         {user && <form className="thread-reply-form" onSubmit={submitReply}><input name="content" maxLength={1000} placeholder={`Reply to ${replyOwner?.fullname || "this reply"}...`} aria-label="Write a reply to this reply" required /><button className="button button-primary" disabled={submitting}>{submitting ? "Sending..." : "Reply"} <ArrowRight size={13} /></button></form>}

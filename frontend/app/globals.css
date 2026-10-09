@@ -214,6 +214,10 @@ button:disabled { opacity: .6; cursor: wait; }
 .thread-reply-content > strong { font-size: 10px; }
 .thread-reply-content > strong small { color: var(--muted); font-size: 9px; font-weight: 400; }
 .thread-reply-content > p { color: #cac6cf; font-size: 10px; line-height: 1.6; margin: 4px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.thread-reply-edit { margin-top: 7px; }
+.thread-reply-edit textarea { background: #111015; border: 1px solid var(--line); border-radius: 8px; color: white; font-size: 10px; min-height: 58px; outline: 0; padding: 8px 10px; resize: vertical; width: 100%; }
+.thread-reply-edit .comment-actions { margin-top: 5px; }
+.thread-reply-content .comment-actions .liked { color: #ff8eaa; }
 .thread-nested-replies { border-left: 1px solid var(--line); margin: 5px 0 0 5px; padding-left: 12px; }
 .more-btn { margin-left: auto; }
 .history-list { border: 1px solid var(--line); border-radius: 13px; overflow: hidden; }
