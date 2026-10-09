@@ -32,6 +32,7 @@ router.route("/get-current-user").get(varifyJWT,getcurrentuser);
 router.route("/change-password").put(varifyJWT,changecurrentuserpassword);
 router.route("/update-other-details").put(varifyJWT,updateotherdetails);
 router.route("/update-avatar").put(varifyJWT,upload.single("avatar"),updationoffilesavatar);
+router.route("/channel-profile-id/:channelId").get(varifyJWT,getuserchannel_profile);
 router.route("/channel-profile/:username").get(varifyJWT,getuserchannel_profile);
 router.route("/watch-history").get(varifyJWT,getwatch_history);
 export default router;

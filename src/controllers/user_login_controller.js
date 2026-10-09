@@ -171,14 +171,19 @@ const updationoffilesavatar = asyncHandler(async (req, res) => {
   );
 });
 const getuserchannel_profile=asyncHandler(async(req,res)=>{
-    const {username}=req.params;
-    if(!username?.trim()){
-      throw new ApiiError(403,"username required");
+    const {username, channelId}=req.params;
+    if(channelId && !mongoose.isValidObjectId(channelId)){
+      throw new ApiiError(400,"A valid channel ID is required");
+    }
+    if(!channelId && !username?.trim()){
+      throw new ApiiError(400,"username required");
     }
    const channel=await user.aggregate([
      {
         $match:{
-         username:username?.toLowerCase()
+         ...(channelId
+           ? { _id: new mongoose.Types.ObjectId(channelId) }
+           : { username:username.toLowerCase() })
         }
      },
      {

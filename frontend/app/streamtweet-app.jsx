@@ -203,10 +203,6 @@ export default function StreamTweetApp() {
         setLikedVideoIds(new Set(videos.map(idOf)));
       }
       if (target === "history") setHistory(listFrom(await api("/users/watch-history")));
-      if (target === "channel" && user.username) {
-        const result = await api(`/users/channel-profile/${encodeURIComponent(user.username)}`);
-        setChannel(result.data);
-      }
     } catch (error) {
       notify(error.message);
     }
@@ -262,12 +258,19 @@ export default function StreamTweetApp() {
   };
 
   const openChannel = async (username) => {
-    if (!username) {
+    const channelId = typeof username === "object" ? idOf(username) : "";
+    const channelUsername = typeof username === "object" ? username.username : username;
+    if (!channelId && !channelUsername) {
       notify("Enter a username to find a channel.");
       return;
     }
     try {
-      const result = await api(`/users/channel-profile/${encodeURIComponent(username)}`);
+      const result = await api(channelId
+        ? `/users/channel-profile-id/${encodeURIComponent(channelId)}`
+        : `/users/channel-profile/${encodeURIComponent(channelUsername)}`);
+      if (channelId && idOf(result.data) !== channelId) {
+        throw new Error("The API returned a different channel than the one selected.");
+      }
       setChannel(result.data);
       setPage("channel");
       setModal(null);
@@ -576,7 +579,7 @@ export default function StreamTweetApp() {
         <div className="nav-caption">YOUR SPACE</div>
         <nav>
           {navItems.map(([key, label, Icon]) => (
-            <button key={key} className={`nav-link ${page === key || (page === "playlist-detail" && key === "playlists") ? "active" : ""}`} onClick={() => { navigate(key); setMobileNav(false); }}>
+            <button key={key} className={`nav-link ${page === key || (page === "playlist-detail" && key === "playlists") ? "active" : ""}`} onClick={() => { if (key === "channel" && user?.username) openChannel(user.username); else navigate(key); setMobileNav(false); }}>
               <Icon size={19} strokeWidth={1.8} /><span>{label}</span>{key === "home" && <span className="nav-pip" />}
             </button>
           ))}
@@ -727,7 +730,7 @@ function GlobalFeedPage({ tweets, pagination, loading, onPage, user, api, onNoti
 function SubscribedChannelsPage({ channels, onOpen, onFind }) {
   return <>
     <PageHeading eyebrow="CREATORS YOU FOLLOW" title="Subscribed channels" description="Open a channel to explore its videos and playlists." action={onFind} buttonText="Find a channel" />
-    {channels.length ? <div className="subscribed-channel-grid">{channels.map((channel) => <button className="subscribed-channel-card" key={idOf(channel)} onClick={() => onOpen(channel.username)}>
+    {channels.length ? <div className="subscribed-channel-grid">{channels.map((channel) => <button className="subscribed-channel-card" key={idOf(channel)} onClick={() => onOpen(channel)}>
       <Avatar user={channel} size="large" />
       <span className="subscribed-channel-info"><strong>{channel.fullname || channel.username}</strong><small>@{channel.username}</small></span>
       <ArrowRight size={17} />
