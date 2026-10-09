@@ -860,18 +860,19 @@ function ReplyThread({ targetType, targetId, user, api, notify, requireUser }) {
       </div>
       {expanded && <>
         {user && <form className="thread-reply-form" onSubmit={submitReply}><input name="content" maxLength={1000} placeholder={targetType === "tweet" ? "Write a reply..." : "Reply to this comment..."} aria-label="Write a reply" required /><button className="button button-primary" disabled={submitting}>{submitting ? "Sending..." : "Reply"} <ArrowRight size={13} /></button></form>}
-        {loading ? <p className="thread-replies-status">Loading replies...</p> : replies.length ? <div className="thread-reply-list">{replies.map((item) => <ThreadReply key={idOf(item)} item={item} user={user} api={api} notify={notify} requireUser={requireUser} />)}</div> : <p className="thread-replies-status">No replies yet. Start the conversation.</p>}
+        {loading ? <p className="thread-replies-status">Loading replies...</p> : replies.length ? <div className="thread-reply-list">{replies.map((item) => <ThreadReply key={idOf(item)} item={item} user={user} api={api} notify={notify} requireUser={requireUser} onDeleted={(replyId) => setReplies((current) => current.filter((replyItem) => idOf(replyItem) !== replyId))} />)}</div> : <p className="thread-replies-status">No replies yet. Start the conversation.</p>}
       </>}
     </div>
   </>;
 }
 
-function ThreadReply({ item, user, api, notify, requireUser }) {
+function ThreadReply({ item, user, api, notify, requireUser, onDeleted }) {
   const [replies, setReplies] = useState([]);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const replyOwner = typeof item.owner === "object" ? item.owner : ownerOf(item) === String(user?._id || user?.id) ? user : null;
+  const isOwner = ownerOf(item) === String(user?._id || user?.id);
 
   const toggleReplies = async () => {
     if (expanded) {
@@ -913,15 +914,29 @@ function ThreadReply({ item, user, api, notify, requireUser }) {
     }
   };
 
+  const deleteReply = async () => {
+    if (!window.confirm("Delete this reply and all replies nested under it? This cannot be undone.")) return;
+    try {
+      const result = await api(`/replies/delete-reply/${encodeURIComponent(idOf(item))}`, { method: "DELETE" });
+      onDeleted?.(idOf(item));
+      notify(result.message || "Reply deleted.");
+    } catch (error) {
+      notify(error.message);
+    }
+  };
+
   return <article className="thread-reply">
     <Avatar user={replyOwner} size="small" />
     <div className="thread-reply-content">
       <strong>{replyOwner?.fullname || "Community member"} <small>· {timeAgo(item.createdAt)}</small></strong>
       <p>{item.content}</p>
-      <div className="comment-actions"><button aria-expanded={expanded} onClick={toggleReplies}><MessageCircle size={13} />{expanded ? "Hide replies" : "Reply"}</button></div>
+      <div className="comment-actions">
+        <button aria-expanded={expanded} onClick={toggleReplies}><MessageCircle size={13} />{expanded ? "Hide replies" : "Reply"}</button>
+        {isOwner && <button className="danger-link" onClick={deleteReply}>Delete</button>}
+      </div>
       {expanded && <div className="thread-nested-replies">
         {user && <form className="thread-reply-form" onSubmit={submitReply}><input name="content" maxLength={1000} placeholder={`Reply to ${replyOwner?.fullname || "this reply"}...`} aria-label="Write a reply to this reply" required /><button className="button button-primary" disabled={submitting}>{submitting ? "Sending..." : "Reply"} <ArrowRight size={13} /></button></form>}
-        {loading ? <p className="thread-replies-status">Loading replies...</p> : replies.length ? <div className="thread-reply-list">{replies.map((child) => <ThreadReply key={idOf(child)} item={child} user={user} api={api} notify={notify} requireUser={requireUser} />)}</div> : <p className="thread-replies-status">No replies yet.</p>}
+        {loading ? <p className="thread-replies-status">Loading replies...</p> : replies.length ? <div className="thread-reply-list">{replies.map((child) => <ThreadReply key={idOf(child)} item={child} user={user} api={api} notify={notify} requireUser={requireUser} onDeleted={(replyId) => setReplies((current) => current.filter((replyItem) => idOf(replyItem) !== replyId))} />)}</div> : <p className="thread-replies-status">No replies yet.</p>}
       </div>}
     </div>
   </article>;

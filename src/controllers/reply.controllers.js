@@ -223,9 +223,32 @@ const delete_reply = asyncHandler(async (req, res) => {
     throw new ApiiError(403, "You are not authorized to delete this reply");
   }
 
-  await reply.findByIdAndDelete(reply_id);
+  const [replyTree] = await reply.aggregate([
+    { $match: { _id: targetReply._id } },
+    {
+      $graphLookup: {
+        from: reply.collection.name,
+        startWith: "$_id",
+        connectFromField: "_id",
+        connectToField: "replyTo",
+        as: "descendants",
+      },
+    },
+    {
+      $project: {
+        ids: {
+          $concatArrays: [
+            ["$_id"],
+            { $map: { input: "$descendants", as: "descendant", in: "$$descendant._id" } },
+          ],
+        },
+      },
+    },
+  ]);
 
-  return res.status(200).json(new Api_response(200, {}, "Reply deleted successfully"));
+  await reply.deleteMany({ _id: { $in: replyTree.ids } });
+
+  return res.status(200).json(new Api_response(200, {}, "Reply and its nested replies deleted successfully"));
 });
 const update_reply = asyncHandler(async (req, res) => {
   const { reply_id } = req.params;
