@@ -16,6 +16,10 @@ const replyschema=new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref:"tweet"
     },
+    replyTo:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"reply"
+    },
     liked:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"User"

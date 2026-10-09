@@ -574,7 +574,7 @@ export default function StreamTweetApp() {
         </div>
       </main>
 
-      {modal && <Modal modal={modal} busy={busy} close={() => setModal(null)} submit={submitModal} activeVideo={activeVideo} comments={comments} user={user} onComment={createComment} onLike={toggleLike} isActiveVideoLiked={likedVideoIds.has(idOf(activeVideo))} onDelete={deleteItem} onEdit={(item) => setModal({ type: "comment-edit", itemId: idOf(item), item })} />}
+      {modal && <Modal modal={modal} busy={busy} close={() => setModal(null)} submit={submitModal} activeVideo={activeVideo} comments={comments} user={user} api={api} notify={notify} requireUser={requireUser} onComment={createComment} onLike={toggleLike} isActiveVideoLiked={likedVideoIds.has(idOf(activeVideo))} onDelete={deleteItem} onEdit={(item) => setModal({ type: "comment-edit", itemId: idOf(item), item })} />}
       {toast && <div className="toast"><span><Check size={16} /></span>{toast}</div>}
     </div>
   );
@@ -654,67 +654,14 @@ function TweetsPage({ tweets, user, api, onNotify, onRequireUser, onCreate, onLi
 }
 
 function TweetCard({ tweet, user, api, onNotify, onRequireUser, onLike, onEdit, onDelete }) {
-  const [replies, setReplies] = useState([]);
-  const [repliesOpen, setRepliesOpen] = useState(false);
-  const [loadingReplies, setLoadingReplies] = useState(false);
-  const [submittingReply, setSubmittingReply] = useState(false);
-
-  const toggleReplies = async () => {
-    if (repliesOpen) {
-      setRepliesOpen(false);
-      return;
-    }
-    setRepliesOpen(true);
-    setLoadingReplies(true);
-    try {
-      const result = await api(`/replies/get-tweet-replies/${encodeURIComponent(idOf(tweet))}`);
-      setReplies(listFrom(result));
-    } catch (error) {
-      setRepliesOpen(false);
-      onNotify(`Replies could not be loaded: ${error.message}`);
-    } finally {
-      setLoadingReplies(false);
-    }
-  };
-
-  const submitReply = async (event) => {
-    event.preventDefault();
-    if (!onRequireUser("reply to an update")) return;
-    const form = event.currentTarget;
-    const content = String(new FormData(form).get("content") || "").trim();
-    if (!content) return;
-    setSubmittingReply(true);
-    try {
-      const result = await api(`/replies/create-tweet-reply/${encodeURIComponent(idOf(tweet))}`, {
-        method: "POST",
-        body: JSON.stringify({ content }),
-      });
-      setReplies((current) => [result.data, ...current]);
-      form.reset();
-      onNotify(result.message || "Reply added.");
-    } catch (error) {
-      onNotify(error.message);
-    } finally {
-      setSubmittingReply(false);
-    }
-  };
-
   return <article className="update-card">
     <div className="update-top"><Avatar user={tweet.ownerdetails || user} size="small" /><div><strong>{tweet.ownerdetails?.fullname || user?.fullname || "You"}</strong><span>@{tweet.ownerdetails?.username || user?.username} · {timeAgo(tweet.createdAt)}</span></div><button className="icon-btn more-btn" aria-label="More"><MoreHorizontal size={19} /></button></div>
     <p>{tweet.content}</p>
     <div className="update-actions">
       <button onClick={() => onLike("tweet", idOf(tweet))}><Heart size={17} />Send a little love</button>
-      <button aria-expanded={repliesOpen} onClick={toggleReplies}><MessageCircle size={16} />{repliesOpen ? "Hide replies" : "Reply"}</button>
       {ownerOf(tweet) === String(user?._id || user?.id) && <><button onClick={() => onEdit(tweet)}>Edit</button><button className="danger-link" onClick={() => onDelete(tweet)}>Delete</button></>}
     </div>
-    {repliesOpen && <section className="tweet-replies" aria-label="Tweet replies">
-      {user && <form className="tweet-reply-form" onSubmit={submitReply}><input name="content" maxLength={1000} placeholder="Write a reply..." aria-label="Write a reply" required /><button className="button button-primary" disabled={submittingReply}>{submittingReply ? "Sending..." : "Reply"} <ArrowRight size={14} /></button></form>}
-      {loadingReplies ? <p className="tweet-replies-status">Loading replies...</p> : replies.length ? <div className="tweet-reply-list">{replies.map((item) => {
-        const ownReply = ownerOf(item) === String(user?._id || user?.id);
-        const replyOwner = typeof item.owner === "object" ? item.owner : ownReply ? user : null;
-        return <article className="tweet-reply" key={idOf(item)}><Avatar user={replyOwner} size="small" /><div><strong>{replyOwner?.fullname || "Community member"} <small>· {timeAgo(item.createdAt)}</small></strong><p>{item.content}</p></div></article>;
-      })}</div> : <p className="tweet-replies-status">No replies yet. Start the conversation.</p>}
-    </section>}
+    <ReplyThread targetType="tweet" targetId={idOf(tweet)} user={user} api={api} notify={onNotify} requireUser={onRequireUser} />
   </article>;
 }
 
@@ -856,7 +803,131 @@ function EmptyState({ icon, title, copy, action, onClick }) {
   return <div className="empty-state"><span className="empty-icon">{icon}</span><h2>{title}</h2><p>{copy}</p>{action && <button className="button button-primary" onClick={onClick}>{action} <ArrowRight size={16} /></button>}</div>;
 }
 
-function Modal({ modal, busy, close, submit, activeVideo, comments, user, onComment, onLike, isActiveVideoLiked, onDelete, onEdit }) {
+function ReplyThread({ targetType, targetId, user, api, notify, requireUser }) {
+  const [replies, setReplies] = useState([]);
+  const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const routes = targetType === "tweet"
+    ? { get: "get-tweet-replies", create: "create-tweet-reply" }
+    : { get: "get-comment-replies", create: "create-reply" };
+
+  const toggleReplies = async () => {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    setLoading(true);
+    try {
+      const result = await api(`/replies/${routes.get}/${encodeURIComponent(targetId)}`);
+      setReplies(listFrom(result));
+    } catch (error) {
+      setExpanded(false);
+      notify(`Replies could not be loaded: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitReply = async (event) => {
+    event.preventDefault();
+    if (!requireUser(targetType === "tweet" ? "reply to an update" : "reply to a comment")) return;
+    const form = event.currentTarget;
+    const content = String(new FormData(form).get("content") || "").trim();
+    if (!content) return;
+    setSubmitting(true);
+    try {
+      const result = await api(`/replies/${routes.create}/${encodeURIComponent(targetId)}`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+      setReplies((current) => [{ ...result.data, owner: user }, ...current]);
+      form.reset();
+      notify(result.message || "Reply added.");
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <>
+    <div className={targetType === "tweet" ? "tweet-replies" : "comment-replies-root"}>
+      <div className="comment-actions">
+        <button aria-expanded={expanded} onClick={toggleReplies}><MessageCircle size={13} />{expanded ? "Hide replies" : "Reply"}</button>
+      </div>
+      {expanded && <>
+        {user && <form className="thread-reply-form" onSubmit={submitReply}><input name="content" maxLength={1000} placeholder={targetType === "tweet" ? "Write a reply..." : "Reply to this comment..."} aria-label="Write a reply" required /><button className="button button-primary" disabled={submitting}>{submitting ? "Sending..." : "Reply"} <ArrowRight size={13} /></button></form>}
+        {loading ? <p className="thread-replies-status">Loading replies...</p> : replies.length ? <div className="thread-reply-list">{replies.map((item) => <ThreadReply key={idOf(item)} item={item} user={user} api={api} notify={notify} requireUser={requireUser} />)}</div> : <p className="thread-replies-status">No replies yet. Start the conversation.</p>}
+      </>}
+    </div>
+  </>;
+}
+
+function ThreadReply({ item, user, api, notify, requireUser }) {
+  const [replies, setReplies] = useState([]);
+  const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const replyOwner = typeof item.owner === "object" ? item.owner : ownerOf(item) === String(user?._id || user?.id) ? user : null;
+
+  const toggleReplies = async () => {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    setLoading(true);
+    try {
+      const result = await api(`/replies/get-reply-replies/${encodeURIComponent(idOf(item))}`);
+      setReplies(listFrom(result));
+    } catch (error) {
+      setExpanded(false);
+      notify(`Replies could not be loaded: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitReply = async (event) => {
+    event.preventDefault();
+    if (!requireUser("reply to a reply")) return;
+    const form = event.currentTarget;
+    const content = String(new FormData(form).get("content") || "").trim();
+    if (!content) return;
+    setSubmitting(true);
+    try {
+      const result = await api(`/replies/create-reply-to-reply/${encodeURIComponent(idOf(item))}`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+      setReplies((current) => [{ ...result.data, owner: user }, ...current]);
+      form.reset();
+      notify(result.message || "Reply added.");
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <article className="thread-reply">
+    <Avatar user={replyOwner} size="small" />
+    <div className="thread-reply-content">
+      <strong>{replyOwner?.fullname || "Community member"} <small>· {timeAgo(item.createdAt)}</small></strong>
+      <p>{item.content}</p>
+      <div className="comment-actions"><button aria-expanded={expanded} onClick={toggleReplies}><MessageCircle size={13} />{expanded ? "Hide replies" : "Reply"}</button></div>
+      {expanded && <div className="thread-nested-replies">
+        {user && <form className="thread-reply-form" onSubmit={submitReply}><input name="content" maxLength={1000} placeholder={`Reply to ${replyOwner?.fullname || "this reply"}...`} aria-label="Write a reply to this reply" required /><button className="button button-primary" disabled={submitting}>{submitting ? "Sending..." : "Reply"} <ArrowRight size={13} /></button></form>}
+        {loading ? <p className="thread-replies-status">Loading replies...</p> : replies.length ? <div className="thread-reply-list">{replies.map((child) => <ThreadReply key={idOf(child)} item={child} user={user} api={api} notify={notify} requireUser={requireUser} />)}</div> : <p className="thread-replies-status">No replies yet.</p>}
+      </div>}
+    </div>
+  </article>;
+}
+
+function Modal({ modal, busy, close, submit, activeVideo, comments, user, api, notify, requireUser, onComment, onLike, isActiveVideoLiked, onDelete, onEdit }) {
   const type = modal.type;
   const title = {
     login: "Welcome back.", register: "Your people are here.", "video-create": "Make a little movie magic.",
@@ -871,7 +942,38 @@ function Modal({ modal, busy, close, submit, activeVideo, comments, user, onComm
     "playlist-create": "Give your new collection a name and an optional description.",
     "playlist-edit": "Update the name or description of this collection.",
   }[type] || "";
-  if (type === "video-detail") return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><section className="detail-modal"><button className="modal-close" onClick={close}><X size={20} /></button><div className="detail-player-wrap">{activeVideo?.videofile ? <video src={activeVideo.videofile} controls autoPlay playsInline /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div><div className="detail-content"><span className="eyebrow">IN THE STREAM</span><h2>{activeVideo?.title || "A little something to watch."}</h2><p className="detail-description">{activeVideo?.description || "No description provided."}</p><div className="detail-owner"><Avatar user={activeVideo?.ownerdetails} size="small" /><span>{activeVideo?.ownerdetails?.fullname || "StreamTweet creator"} <small>· {Number(activeVideo?.views) || 0} views</small></span><button className={`button button-outline detail-like ${isActiveVideoLiked ? "liked" : ""}`} aria-label={isActiveVideoLiked ? "Unlike video" : "Like video"} aria-pressed={isActiveVideoLiked} onClick={() => onLike("video", idOf(activeVideo))}><Heart size={16} fill={isActiveVideoLiked ? "currentColor" : "none"} /> {isActiveVideoLiked ? "Liked" : "Like"}</button></div><div className="comments-panel"><div className="comments-title"><div><h3>Say something nice.</h3><span>{comments.length} comments</span></div><MessageCircle size={19} /></div>{user ? <form className="comment-form" onSubmit={onComment}><input name="content" maxLength={1000} placeholder="Add to the conversation..." required /><button aria-label="Post comment" className="button button-primary"><ArrowRight size={16} /></button></form> : <p className="comment-signin">Log in to join the conversation.</p>}<div className="comments-list">{comments.map((comment) => <article className="comment-row" key={idOf(comment)}><Avatar user={comment.ownerdetails} size="small" /><div><strong>{comment.ownerdetails?.fullname || "Community member"} <small>{timeAgo(comment.createdAt)}</small></strong><p>{comment.content}</p><div className="comment-actions"><button onClick={() => onLike("comment", idOf(comment))}><Heart size={13} /> Like</button>{ownerOf(comment) === String(user?._id || user?.id) && <><button onClick={() => onEdit(comment)}>Edit</button><button className="danger-link" onClick={() => onDelete("comment", idOf(comment))}>Delete</button></>}</div></div></article>)}</div></div></div></section></div>;
+  if (type === "video-detail") return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <section className="detail-modal">
+      <button className="modal-close" onClick={close}><X size={20} /></button>
+      <div className="detail-player-wrap">{activeVideo?.videofile ? <video src={activeVideo.videofile} controls autoPlay playsInline /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div>
+      <div className="detail-content">
+        <span className="eyebrow">IN THE STREAM</span>
+        <h2>{activeVideo?.title || "A little something to watch."}</h2>
+        <p className="detail-description">{activeVideo?.description || "No description provided."}</p>
+        <div className="detail-owner">
+          <Avatar user={activeVideo?.ownerdetails} size="small" />
+          <span>{activeVideo?.ownerdetails?.fullname || "StreamTweet creator"} <small>· {Number(activeVideo?.views) || 0} views</small></span>
+          <button className={`button button-outline detail-like ${isActiveVideoLiked ? "liked" : ""}`} aria-label={isActiveVideoLiked ? "Unlike video" : "Like video"} aria-pressed={isActiveVideoLiked} onClick={() => onLike("video", idOf(activeVideo))}><Heart size={16} fill={isActiveVideoLiked ? "currentColor" : "none"} /> {isActiveVideoLiked ? "Liked" : "Like"}</button>
+        </div>
+        <div className="comments-panel">
+          <div className="comments-title"><div><h3>Say something nice.</h3><span>{comments.length} comments</span></div><MessageCircle size={19} /></div>
+          {user ? <form className="comment-form" onSubmit={onComment}><input name="content" maxLength={1000} placeholder="Add to the conversation..." required /><button aria-label="Post comment" className="button button-primary"><ArrowRight size={16} /></button></form> : <p className="comment-signin">Log in to join the conversation.</p>}
+          <div className="comments-list">{comments.map((comment) => <article className="comment-row" key={idOf(comment)}>
+            <Avatar user={comment.ownerdetails} size="small" />
+            <div>
+              <strong>{comment.ownerdetails?.fullname || "Community member"} <small>{timeAgo(comment.createdAt)}</small></strong>
+              <p>{comment.content}</p>
+              <div className="comment-actions">
+                <button onClick={() => onLike("comment", idOf(comment))}><Heart size={13} /> Like</button>
+                {ownerOf(comment) === String(user?._id || user?.id) && <><button onClick={() => onEdit(comment)}>Edit</button><button className="danger-link" onClick={() => onDelete("comment", idOf(comment))}>Delete</button></>}
+              </div>
+              <ReplyThread targetType="comment" targetId={idOf(comment)} user={user} api={api} notify={notify} requireUser={requireUser} />
+            </div>
+          </article>)}</div>
+        </div>
+      </div>
+    </section>
+  </div>;
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><section className="form-modal"><button className="modal-close" onClick={close} aria-label="Close"><X size={20} /></button><span className="modal-mark"><Sparkles size={20} /></span><span className="eyebrow">STREAMTWEET / YOUR SPACE</span><h2>{title}</h2><p className="modal-copy">{copy}</p><form className="modal-form" onSubmit={submit}>
     {type === "login" && <><Field label="Email or username" name="identity" autoComplete="username" /><Field label="Password" name="password" type="password" autoComplete="current-password" /><button className="text-link auth-switch" type="button" onClick={() => { close(); window.dispatchEvent(new CustomEvent("open-register")); }}>New here? Create an account <ArrowRight size={14} /></button></>}
     {type === "register" && <><Field label="Full name" name="fullname" /><Field label="Email address" name="email" type="email" /><Field label="Username" name="username" /><Field label="Password (6+ characters)" name="password" type="password" minLength={6} /><Field label="Avatar image" name="avatar" type="file" accept="image/*" required /><Field label="Cover image (optional)" name="coverImage" type="file" accept="image/*" required={false} /></>}

@@ -203,16 +203,18 @@ button:disabled { opacity: .6; cursor: wait; }
 .update-actions { border-top: 1px solid var(--line); display: flex; gap: 8px; padding-top: 8px; }
 .update-actions button { align-items: center; display: flex; gap: 6px; }
 .tweet-replies { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
-.tweet-reply-form { display: flex; gap: 8px; }
-.tweet-reply-form input { background: #111015; border: 1px solid var(--line); border-radius: 8px; color: white; flex: 1; font-size: 10px; min-width: 0; outline: 0; padding: 0 10px; }
-.tweet-reply-form .button { min-height: 36px; padding: 0 10px; }
-.tweet-replies-status { color: var(--muted); font-size: 10px; margin: 12px 0 0; }
-.tweet-reply-list { display: grid; gap: 13px; margin-top: 13px; }
-.tweet-reply { align-items: flex-start; display: flex; gap: 9px; }
-.tweet-reply > div { flex: 1; min-width: 0; }
-.tweet-reply strong { font-size: 10px; }
-.tweet-reply strong small { color: var(--muted); font-size: 9px; font-weight: 400; }
-.tweet-reply p { color: #cac6cf; font-size: 10px; line-height: 1.6; margin: 4px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.comment-replies-root { margin-top: 5px; }
+.thread-reply-form { display: flex; gap: 8px; margin-top: 10px; }
+.thread-reply-form input { background: #111015; border: 1px solid var(--line); border-radius: 8px; color: white; flex: 1; font-size: 10px; min-width: 0; outline: 0; padding: 0 10px; }
+.thread-reply-form .button { min-height: 36px; padding: 0 10px; }
+.thread-replies-status { color: var(--muted); font-size: 10px; margin: 12px 0 0; }
+.thread-reply-list { display: grid; gap: 13px; margin-top: 12px; }
+.thread-reply { align-items: flex-start; display: flex; gap: 9px; }
+.thread-reply-content { flex: 1; min-width: 0; }
+.thread-reply-content > strong { font-size: 10px; }
+.thread-reply-content > strong small { color: var(--muted); font-size: 9px; font-weight: 400; }
+.thread-reply-content > p { color: #cac6cf; font-size: 10px; line-height: 1.6; margin: 4px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.thread-nested-replies { border-left: 1px solid var(--line); margin: 5px 0 0 5px; padding-left: 12px; }
 .more-btn { margin-left: auto; }
 .history-list { border: 1px solid var(--line); border-radius: 13px; overflow: hidden; }
 .history-row { align-items: center; background: var(--panel); border: 0; border-bottom: 1px solid var(--line); cursor: pointer; display: flex; gap: 14px; padding: 12px 15px; text-align: left; width: 100%; }

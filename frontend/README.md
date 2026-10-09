@@ -28,8 +28,8 @@ The Next.js rewrite proxies `/api/*` to `API_TARGET` (default
   publication status, and delete.
 - Updates: create, list, edit, delete, like, and reply.
 - Comments: list, create, edit, delete, and like.
-- Replies: replies can be added to tweets and listed under each update. The
-  backend also exposes comment reply, edit, delete, like, and like-count
+- Replies: threaded replies work on both tweets and comments, including replies
+  to other replies. The backend also exposes edit, delete, like, and like-count
   endpoints under `/api/v1/replies`; the existing `/api/*` rewrite forwards
   these requests to the configured API service.
 - Likes and history: liked videos and watch history.
