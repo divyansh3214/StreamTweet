@@ -84,6 +84,33 @@ const getuserTweets = asyncHandler(async (req, res) => {
   ]);   
   return res.status(200).json(new apiresponse(200, tweets, 'User tweets fetched successfully'));
 });
+
+const getGlobalFeed = asyncHandler(async (req, res) => {
+  const requestedPage = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const pageLimit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+  const totalTweets = await tweet.countDocuments();
+  const totalPages = Math.ceil(totalTweets / pageLimit);
+  const pageNumber = Math.min(requestedPage, Math.max(totalPages, 1));
+  const tweets = await tweet
+    .find()
+    .sort({ createdAt: -1, _id: -1 })
+    .skip((pageNumber - 1) * pageLimit)
+    .limit(pageLimit)
+    .populate("owner", "username fullname avatar")
+    .lean();
+
+  return res.status(200).json(new apiresponse(200, {
+    tweets: tweets.map((item) => ({ ...item, ownerdetails: item.owner })),
+    pagination: {
+      page: pageNumber,
+      limit: pageLimit,
+      totalTweets,
+      totalPages,
+      hasNextPage: pageNumber < totalPages,
+      hasPreviousPage: pageNumber > 1,
+    },
+  }, "Global feed fetched successfully"));
+});
 const deleteTweet = asyncHandler(async (req, res) => {
   const { tweetid } = req.params;
   const userId = req.loggedoutuser?._id;
@@ -141,4 +168,4 @@ const updateTweet = asyncHandler(async (req, res) => {
   return res.status(200).json(new apiresponse(200, tweetExist, 'Tweet updated successfully'));
 });
 
-export { createTweet, getuserTweets, deleteTweet, updateTweet };
+export { createTweet, getuserTweets, getGlobalFeed, deleteTweet, updateTweet };
