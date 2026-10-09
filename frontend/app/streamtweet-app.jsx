@@ -564,7 +564,7 @@ export default function StreamTweetApp() {
         <div className="content-area">
           {page === "home" && <HomePage user={user} videos={filteredVideos} onAction={handleHomeAction} onPage={navigate} onOpenVideo={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
           {page === "videos" && <VideosPage videos={filteredVideos} user={user} query={videoQuery} setQuery={setVideoQuery} sortBy={sortBy} setSortBy={setSortBy} sortType={sortType} setSortType={setSortType} onSearch={() => loadPage("videos")} onUpload={() => requireUser("upload a video") && setModal({ type: "video-create" })} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} onEdit={(video) => setModal({ type: "video-edit", itemId: idOf(video), item: video })} onDelete={(video) => deleteItem("video", idOf(video))} onPublish={async (video) => { try { const result = await api(`/videos/toggle-publish-status/${encodeURIComponent(idOf(video))}`, { method: "PUT" }); await fetchVideos(); notify(result.message || "Visibility updated."); } catch (error) { notify(error.message); } }} />}
-          {page === "tweets" && <TweetsPage tweets={tweets.filter((item) => !query || (item.content || "").toLowerCase().includes(query.toLowerCase()))} user={user} onCreate={() => setModal({ type: "tweet-create" })} onLike={toggleLike} onEdit={(item) => setModal({ type: "tweet-edit", itemId: idOf(item), item })} onDelete={(item) => deleteItem("tweet", idOf(item))} />}
+          {page === "tweets" && <TweetsPage tweets={tweets.filter((item) => !query || (item.content || "").toLowerCase().includes(query.toLowerCase()))} user={user} api={api} onNotify={notify} onRequireUser={requireUser} onCreate={() => setModal({ type: "tweet-create" })} onLike={toggleLike} onEdit={(item) => setModal({ type: "tweet-edit", itemId: idOf(item), item })} onDelete={(item) => deleteItem("tweet", idOf(item))} />}
           {page === "liked" && <VideosPage title="The replay list" eyebrow="YOUR FAVORITES" description="All the videos you’ve loved, together in one place." videos={liked.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} user={user} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
           {page === "history" && <HistoryPage entries={history.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} onOpen={openVideo} />}
           {page === "playlists" && <PlaylistsPage playlists={playlists.filter((item) => !query || `${item.name || ""} ${item.description || ""}`.toLowerCase().includes(query.toLowerCase()))} onCreate={() => requireUser("create a playlist") && setModal({ type: "playlist-create" })} onOpen={openPlaylist} onEdit={(item) => setModal({ type: "playlist-edit", itemId: idOf(item), item })} onDelete={deletePlaylist} />}
@@ -647,10 +647,75 @@ function VideoCard({ video, index = 0, user, onOpen, onLike, isLiked = false, on
   </article>;
 }
 
-function TweetsPage({ tweets, user, onCreate, onLike, onEdit, onDelete }) {
+function TweetsPage({ tweets, user, api, onNotify, onRequireUser, onCreate, onLike, onEdit, onDelete }) {
   return <><PageHeading eyebrow="LITTLE THOUGHTS, OUT LOUD" title="Your updates" description="Tiny moments from your corner of the internet." action={onCreate} buttonText="Write an update" />
-    <div className="update-feed">{tweets.length ? tweets.map((tweet) => <article className="update-card" key={idOf(tweet)}><div className="update-top"><Avatar user={tweet.ownerdetails || user} size="small" /><div><strong>{tweet.ownerdetails?.fullname || user?.fullname || "You"}</strong><span>@{tweet.ownerdetails?.username || user?.username} · {timeAgo(tweet.createdAt)}</span></div><button className="icon-btn more-btn" aria-label="More"><MoreHorizontal size={19} /></button></div><p>{tweet.content}</p><div className="update-actions"><button onClick={() => onLike("tweet", idOf(tweet))}><Heart size={17} />Send a little love</button>{ownerOf(tweet) === String(user?._id || user?.id) && <><button onClick={() => onEdit(tweet)}>Edit</button><button className="danger-link" onClick={() => onDelete(tweet)}>Delete</button></>}</div></article>) : <EmptyState icon={<MessageCircle />} title="The feed is feeling quiet." copy="Drop a thought and get the conversation going." action="Write your first update" onClick={onCreate} />}</div>
+    <div className="update-feed">{tweets.length ? tweets.map((tweet) => <TweetCard key={idOf(tweet)} tweet={tweet} user={user} api={api} onNotify={onNotify} onRequireUser={onRequireUser} onLike={onLike} onEdit={onEdit} onDelete={onDelete} />) : <EmptyState icon={<MessageCircle />} title="The feed is feeling quiet." copy="Drop a thought and get the conversation going." action="Write your first update" onClick={onCreate} />}</div>
   </>;
+}
+
+function TweetCard({ tweet, user, api, onNotify, onRequireUser, onLike, onEdit, onDelete }) {
+  const [replies, setReplies] = useState([]);
+  const [repliesOpen, setRepliesOpen] = useState(false);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const [submittingReply, setSubmittingReply] = useState(false);
+
+  const toggleReplies = async () => {
+    if (repliesOpen) {
+      setRepliesOpen(false);
+      return;
+    }
+    setRepliesOpen(true);
+    setLoadingReplies(true);
+    try {
+      const result = await api(`/replies/get-tweet-replies/${encodeURIComponent(idOf(tweet))}`);
+      setReplies(listFrom(result));
+    } catch (error) {
+      setRepliesOpen(false);
+      onNotify(`Replies could not be loaded: ${error.message}`);
+    } finally {
+      setLoadingReplies(false);
+    }
+  };
+
+  const submitReply = async (event) => {
+    event.preventDefault();
+    if (!onRequireUser("reply to an update")) return;
+    const form = event.currentTarget;
+    const content = String(new FormData(form).get("content") || "").trim();
+    if (!content) return;
+    setSubmittingReply(true);
+    try {
+      const result = await api(`/replies/create-tweet-reply/${encodeURIComponent(idOf(tweet))}`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+      setReplies((current) => [result.data, ...current]);
+      form.reset();
+      onNotify(result.message || "Reply added.");
+    } catch (error) {
+      onNotify(error.message);
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  return <article className="update-card">
+    <div className="update-top"><Avatar user={tweet.ownerdetails || user} size="small" /><div><strong>{tweet.ownerdetails?.fullname || user?.fullname || "You"}</strong><span>@{tweet.ownerdetails?.username || user?.username} · {timeAgo(tweet.createdAt)}</span></div><button className="icon-btn more-btn" aria-label="More"><MoreHorizontal size={19} /></button></div>
+    <p>{tweet.content}</p>
+    <div className="update-actions">
+      <button onClick={() => onLike("tweet", idOf(tweet))}><Heart size={17} />Send a little love</button>
+      <button aria-expanded={repliesOpen} onClick={toggleReplies}><MessageCircle size={16} />{repliesOpen ? "Hide replies" : "Reply"}</button>
+      {ownerOf(tweet) === String(user?._id || user?.id) && <><button onClick={() => onEdit(tweet)}>Edit</button><button className="danger-link" onClick={() => onDelete(tweet)}>Delete</button></>}
+    </div>
+    {repliesOpen && <section className="tweet-replies" aria-label="Tweet replies">
+      {user && <form className="tweet-reply-form" onSubmit={submitReply}><input name="content" maxLength={1000} placeholder="Write a reply..." aria-label="Write a reply" required /><button className="button button-primary" disabled={submittingReply}>{submittingReply ? "Sending..." : "Reply"} <ArrowRight size={14} /></button></form>}
+      {loadingReplies ? <p className="tweet-replies-status">Loading replies...</p> : replies.length ? <div className="tweet-reply-list">{replies.map((item) => {
+        const ownReply = ownerOf(item) === String(user?._id || user?.id);
+        const replyOwner = typeof item.owner === "object" ? item.owner : ownReply ? user : null;
+        return <article className="tweet-reply" key={idOf(item)}><Avatar user={replyOwner} size="small" /><div><strong>{replyOwner?.fullname || "Community member"} <small>· {timeAgo(item.createdAt)}</small></strong><p>{item.content}</p></div></article>;
+      })}</div> : <p className="tweet-replies-status">No replies yet. Start the conversation.</p>}
+    </section>}
+  </article>;
 }
 
 function HistoryPage({ entries, onOpen }) {

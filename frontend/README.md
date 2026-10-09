@@ -26,9 +26,10 @@ The Next.js rewrite proxies `/api/*` to `API_TARGET` (default
   details, password, and avatar updates.
 - Videos: upload, list/search/sort, details and playback, comments, likes, edit,
   publication status, and delete.
-- Updates: create, list, edit, delete, and like.
+- Updates: create, list, edit, delete, like, and reply.
 - Comments: list, create, edit, delete, and like.
-- Replies: the backend exposes create, edit, delete, like, and like-count
+- Replies: replies can be added to tweets and listed under each update. The
+  backend also exposes comment reply, edit, delete, like, and like-count
   endpoints under `/api/v1/replies`; the existing `/api/*` rewrite forwards
   these requests to the configured API service.
 - Likes and history: liked videos and watch history.

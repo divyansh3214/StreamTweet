@@ -12,6 +12,10 @@ const replyschema=new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref:"comments"
     },
+    tweet:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"tweet"
+    },
     liked:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"User"
