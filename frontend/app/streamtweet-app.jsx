@@ -174,6 +174,13 @@ export default function StreamTweetApp() {
     }
   }, [api, notify]);
 
+  const fetchSubscribedChannels = useCallback(async () => {
+    const result = await api("/subscriptions/my-channels");
+    const channels = listFrom(result);
+    setSubscribedChannels(channels);
+    return channels;
+  }, [api]);
+
   const loadPage = useCallback(async (target = page) => {
     if (!user || target === "home") {
       if (user) {
@@ -188,10 +195,7 @@ export default function StreamTweetApp() {
         setTweets(listFrom(result));
       }
       if (target === "feed") await fetchGlobalFeed(1);
-      if (target === "subscriptions") {
-        const result = await api("/subscriptions/my-channels");
-        setSubscribedChannels(listFrom(result));
-      }
+      if (target === "subscriptions") await fetchSubscribedChannels();
       if (target === "liked") {
         const result = await api("/likes/get-all-liked-videos");
         const videos = listFrom(result).map((like) => like.videodetails).filter(Boolean);
@@ -206,7 +210,7 @@ export default function StreamTweetApp() {
     } catch (error) {
       notify(error.message);
     }
-  }, [api, fetchGlobalFeed, fetchVideos, notify, page, user, videoQuery]);
+  }, [api, fetchGlobalFeed, fetchSubscribedChannels, fetchVideos, notify, page, user, videoQuery]);
 
   useEffect(() => {
     if (!user) return;
@@ -280,12 +284,21 @@ export default function StreamTweetApp() {
         `/subscriptions/${isSubscribed ? "unsubscribe" : "subscribe"}/${encodeURIComponent(idOf(profile))}`,
         { method: isSubscribed ? "DELETE" : "POST" },
       );
-      const refreshed = await api(`/users/channel-profile/${encodeURIComponent(profile.username)}`);
-      setChannel(refreshed.data);
       setSubscribedChannels((current) => isSubscribed
         ? current.filter((item) => idOf(item) !== idOf(profile))
-        : [refreshed.data, ...current.filter((item) => idOf(item) !== idOf(profile))]);
+        : [profile, ...current.filter((item) => idOf(item) !== idOf(profile))]);
       notify(result.message || (isSubscribed ? "Unsubscribed from channel." : "Subscribed to channel."));
+      try {
+        await fetchSubscribedChannels();
+      } catch (error) {
+        notify(`Subscription was updated, but your channel list could not be refreshed: ${error.message}`);
+      }
+      try {
+        const refreshed = await api(`/users/channel-profile/${encodeURIComponent(profile.username)}`);
+        setChannel(refreshed.data);
+      } catch (error) {
+        notify(`Subscription was updated, but the channel profile could not be refreshed: ${error.message}`);
+      }
     } catch (error) {
       notify(error.message);
     }
