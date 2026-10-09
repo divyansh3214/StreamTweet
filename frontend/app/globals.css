@@ -197,6 +197,13 @@ button:disabled { opacity: .6; cursor: wait; }
 .feed-pagination { align-items: center; display: flex; gap: 12px; justify-content: center; margin: 20px 0; max-width: 790px; }
 .feed-pagination > span { color: var(--muted); font-size: 10px; }
 .feed-pagination .button { min-height: 34px; padding: 0 12px; }
+.subscribed-channel-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill,minmax(245px,1fr)); }
+.subscribed-channel-card { align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 13px; color: var(--text); cursor: pointer; display: flex; gap: 12px; padding: 15px; text-align: left; transition: border-color .18s,background .18s; }
+.subscribed-channel-card:hover { background: #211f27; border-color: rgba(216,251,115,.35); }
+.subscribed-channel-info { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.subscribed-channel-info strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subscribed-channel-info small { color: var(--muted); font-size: 10px; }
+.subscribed-channel-card > svg { color: var(--lime); }
 .update-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 13px; }
 .update-top { align-items: center; display: flex; gap: 10px; }
 .update-top > div { flex: 1; }

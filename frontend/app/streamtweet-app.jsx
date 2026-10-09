@@ -57,6 +57,7 @@ export default function StreamTweetApp() {
   const [feedTweets, setFeedTweets] = useState([]);
   const [feedPagination, setFeedPagination] = useState({ page: 1, totalPages: 0, totalTweets: 0 });
   const [feedLoading, setFeedLoading] = useState(false);
+  const [subscribedChannels, setSubscribedChannels] = useState([]);
   const [liked, setLiked] = useState([]);
   const [likedVideoIds, setLikedVideoIds] = useState(() => new Set());
   const [history, setHistory] = useState([]);
@@ -135,6 +136,7 @@ export default function StreamTweetApp() {
     setTweets([]);
     setFeedTweets([]);
     setFeedPagination({ page: 1, totalPages: 0, totalTweets: 0 });
+    setSubscribedChannels([]);
     setLiked([]);
     setLikedVideoIds(new Set());
     setHistory([]);
@@ -186,6 +188,10 @@ export default function StreamTweetApp() {
         setTweets(listFrom(result));
       }
       if (target === "feed") await fetchGlobalFeed(1);
+      if (target === "subscriptions") {
+        const result = await api("/subscriptions/my-channels");
+        setSubscribedChannels(listFrom(result));
+      }
       if (target === "liked") {
         const result = await api("/likes/get-all-liked-videos");
         const videos = listFrom(result).map((like) => like.videodetails).filter(Boolean);
@@ -193,13 +199,6 @@ export default function StreamTweetApp() {
         setLikedVideoIds(new Set(videos.map(idOf)));
       }
       if (target === "history") setHistory(listFrom(await api("/users/watch-history")));
-      if (target === "playlists") {
-        const [result] = await Promise.all([
-          api(`/playlists/get-user-playlists/${encodeURIComponent(user._id || user.id)}`),
-          fetchVideos(),
-        ]);
-        setPlaylists(listFrom(result));
-      }
       if (target === "channel" && user.username) {
         const result = await api(`/users/channel-profile/${encodeURIComponent(user.username)}`);
         setChannel(result.data);
@@ -283,6 +282,9 @@ export default function StreamTweetApp() {
       );
       const refreshed = await api(`/users/channel-profile/${encodeURIComponent(profile.username)}`);
       setChannel(refreshed.data);
+      setSubscribedChannels((current) => isSubscribed
+        ? current.filter((item) => idOf(item) !== idOf(profile))
+        : [refreshed.data, ...current.filter((item) => idOf(item) !== idOf(profile))]);
       notify(result.message || (isSubscribed ? "Unsubscribed from channel." : "Subscribed to channel."));
     } catch (error) {
       notify(error.message);
@@ -546,8 +548,8 @@ export default function StreamTweetApp() {
   }, [query, videos]);
 
   const navItems = [
-    ["home", "Discover", Home], ["feed", "Global feed", Sparkles], ["videos", "My videos", Film], ["tweets", "My updates", MessageCircle],
-    ["liked", "Liked", Heart], ["history", "History", History], ["playlists", "Playlists", ListVideo],
+    ["home", "Discover", Home], ["feed", "Global feed", Sparkles], ["subscriptions", "Subscriptions", UserRound], ["tweets", "My updates", MessageCircle],
+    ["liked", "Liked", Heart], ["history", "History", History],
     ["channel", "Channel", UserRound],
   ];
 
@@ -570,7 +572,7 @@ export default function StreamTweetApp() {
         <div className="side-promo">
           <span className="promo-kicker"><Sparkles size={13} /> LITTLE REMINDER</span>
           <strong>Your next favorite thing is one tap away.</strong>
-          <button onClick={() => setPage("videos")}>Explore your space <ArrowRight size={15} /></button>
+          <button onClick={() => navigate("subscriptions")}>Explore your space <ArrowRight size={15} /></button>
           <span className="promo-orbit" />
         </div>
         <button className={`nav-link settings-link ${page === "settings" ? "active" : ""}`} onClick={() => navigate("settings")}>
@@ -604,6 +606,7 @@ export default function StreamTweetApp() {
         <div className="content-area">
           {page === "home" && <HomePage user={user} videos={filteredVideos} onAction={handleHomeAction} onPage={navigate} onOpenVideo={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
           {page === "feed" && <GlobalFeedPage tweets={feedTweets.filter((item) => !query || (item.content || "").toLowerCase().includes(query.toLowerCase()))} pagination={feedPagination} loading={feedLoading} onPage={fetchGlobalFeed} user={user} api={api} onNotify={notify} onRequireUser={requireUser} onCreate={() => setModal({ type: "tweet-create" })} onLike={toggleLike} onEdit={(item) => setModal({ type: "tweet-edit", itemId: idOf(item), item })} onDelete={(item) => deleteItem("tweet", idOf(item))} />}
+          {page === "subscriptions" && <SubscribedChannelsPage channels={subscribedChannels.filter((item) => `${item.fullname || ""} ${item.username || ""}`.toLowerCase().includes(query.toLowerCase()))} onOpen={openChannel} onFind={() => setModal({ type: "channel-search" })} />}
           {page === "videos" && <VideosPage videos={filteredVideos} user={user} query={videoQuery} setQuery={setVideoQuery} sortBy={sortBy} setSortBy={setSortBy} sortType={sortType} setSortType={setSortType} onSearch={() => loadPage("videos")} onUpload={() => requireUser("upload a video") && setModal({ type: "video-create" })} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} onEdit={(video) => setModal({ type: "video-edit", itemId: idOf(video), item: video })} onDelete={(video) => deleteItem("video", idOf(video))} onPublish={async (video) => { try { const result = await api(`/videos/toggle-publish-status/${encodeURIComponent(idOf(video))}`, { method: "PUT" }); await fetchVideos(); notify(result.message || "Visibility updated."); } catch (error) { notify(error.message); } }} />}
           {page === "tweets" && <TweetsPage tweets={tweets.filter((item) => !query || (item.content || "").toLowerCase().includes(query.toLowerCase()))} user={user} api={api} onNotify={notify} onRequireUser={requireUser} onCreate={() => setModal({ type: "tweet-create" })} onLike={toggleLike} onEdit={(item) => setModal({ type: "tweet-edit", itemId: idOf(item), item })} onDelete={(item) => deleteItem("tweet", idOf(item))} />}
           {page === "liked" && <VideosPage title="The replay list" eyebrow="YOUR FAVORITES" description="All the videos you’ve loved, together in one place." videos={liked.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} user={user} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
@@ -642,7 +645,7 @@ function HomePage({ user, videos, onAction, onPage, onOpenVideo, onLike, isVideo
 
       <div className="section-intro">
         <div><div className="eyebrow">A GOOD PLACE TO START</div><h2>{user ? "Pick up where you left off." : "A little bit of everything."}</h2><p>{user ? "Your StreamTweet space, made yours." : "The best corners of the internet feel like yours."}</p></div>
-        <button className="text-link" onClick={() => onPage(user ? "videos" : "channel")}>{user ? "All your videos" : "Find a channel"} <ArrowRight size={16} /></button>
+        <button className="text-link" onClick={() => onPage(user ? "subscriptions" : "channel")}>{user ? "Your subscribed channels" : "Find a channel"} <ArrowRight size={16} /></button>
       </div>
 
       {user && videos.length > 0 ? (
@@ -705,6 +708,17 @@ function GlobalFeedPage({ tweets, pagination, loading, onPage, user, api, onNoti
         <button className="button button-outline" disabled={loading || !pagination.hasNextPage} onClick={() => onPage(pagination.page + 1)}>Next</button>
       </div>
     </> : <EmptyState icon={<MessageCircle />} title="The global feed is quiet." copy="Be the first to share an update." action="Write an update" onClick={onCreate} />}
+  </>;
+}
+
+function SubscribedChannelsPage({ channels, onOpen, onFind }) {
+  return <>
+    <PageHeading eyebrow="CREATORS YOU FOLLOW" title="Subscribed channels" description="Open a channel to explore its videos and playlists." action={onFind} buttonText="Find a channel" />
+    {channels.length ? <div className="subscribed-channel-grid">{channels.map((channel) => <button className="subscribed-channel-card" key={idOf(channel)} onClick={() => onOpen(channel.username)}>
+      <Avatar user={channel} size="large" />
+      <span className="subscribed-channel-info"><strong>{channel.fullname || channel.username}</strong><small>@{channel.username}</small></span>
+      <ArrowRight size={17} />
+    </button>)}</div> : <EmptyState icon={<UserRound />} title="No subscribed channels yet." copy="Find creators you enjoy and subscribe to see them here." action="Find a channel" onClick={onFind} />}
   </>;
 }
 

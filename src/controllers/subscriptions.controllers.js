@@ -50,4 +50,18 @@ const unsubscribeFromChannel = asyncHandler(async (req, res) => {
     .json(new Api_response(200, {}, "Unsubscribed from channel successfully"));
 });
 
-export { subscribeToChannel, unsubscribeFromChannel };
+const getSubscribedChannels = asyncHandler(async (req, res) => {
+  const channels = await subscription
+    .find({ subscriber: req.loggedoutuser?._id })
+    .sort({ createdAt: -1 })
+    .populate("channels", "username fullname avatar coverImage")
+    .lean();
+
+  return res.status(200).json(new Api_response(
+    200,
+    channels.map((entry) => entry.channels).filter(Boolean),
+    "Subscribed channels fetched successfully",
+  ));
+});
+
+export { subscribeToChannel, unsubscribeFromChannel, getSubscribedChannels };

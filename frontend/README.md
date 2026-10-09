@@ -28,7 +28,8 @@ The Next.js rewrite proxies `/api/*` to `API_TARGET` (default
   publication status, and delete.
 - Updates: create, list, edit, delete, like, and reply.
 - Global feed: browse all creator updates with server-side pagination.
-- Channels: subscribe and unsubscribe from creator profiles.
+- Channels: browse subscribed creators and open their channel videos/playlists;
+  subscribe and unsubscribe from creator profiles.
 - Comments: list, create, edit, delete, and like.
 - Replies: threaded replies work on both tweets and comments, including replies
   to other replies. Reply owners can delete their replies; deleting a reply also
