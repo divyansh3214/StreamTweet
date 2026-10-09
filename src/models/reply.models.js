@@ -1,19 +1,19 @@
-import mongoose from "moongoose";
+import mongoose from "mongoose";
 const replyschema=new mongoose.Schema({
     content:{
         type:String,
         required:true
     },
     owner:{
-        type:mongoose.Types.ObjectId,
+        type:mongoose.Schema.Types.ObjectId,
         ref:"User"
     },
     comment:{
-        type:mongoose.Types.ObjectId,
+        type:mongoose.Schema.Types.ObjectId,
         ref:"comments"
     },
     liked:[{
-        type:mongoose.Types.ObjectId,
+        type:mongoose.Schema.Types.ObjectId,
         ref:"User"
     }]
 },{timestamps:true});
