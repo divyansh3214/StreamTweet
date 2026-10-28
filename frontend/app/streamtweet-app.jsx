@@ -3,7 +3,7 @@
 import {
   ArrowDownUp, ArrowLeft, ArrowRight, Bell, Check, ChevronDown, Compass, Film,
   Heart, History, Home, ListVideo, LogIn, LogOut, Menu, MessageCircle, MoreHorizontal,
-  Plus, Search, Settings, Sparkles, UserRound, Video, X,
+  Play, Plus, Search, Settings, Sparkles, UserRound, Video, X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -564,16 +564,16 @@ export default function StreamTweetApp() {
   }, [query, videos]);
 
   const navItems = [
-    ["home", "Discover", Home], ["feed", "Global feed", Sparkles], ["subscriptions", "Subscriptions", UserRound], ["tweets", "My updates", MessageCircle],
-    ["liked", "Liked", Heart], ["history", "History", History],
-    ["channel", "Channel", UserRound],
+    ["home", "Home", Home], ["feed", "Explore", Compass], ["subscriptions", "Subscriptions", UserRound],
+    ["videos", "Your videos", Film], ["playlists", "Playlists", ListVideo], ["tweets", "My updates", MessageCircle],
+    ["liked", "Liked videos", Heart], ["history", "History", History], ["channel", "My channel", UserRound],
   ];
 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileNav ? "sidebar-open" : ""}`}>
         <a className="brand" href="#" onClick={(event) => { event.preventDefault(); setPage("home"); }}>
-          <span className="brand-mark"><Sparkles size={19} fill="currentColor" /></span>
+          <span className="brand-mark"><Play size={19} fill="currentColor" /></span>
           <span>stream<span>tweet</span></span>
         </a>
         <div className="nav-caption">YOUR SPACE</div>
@@ -607,7 +607,7 @@ export default function StreamTweetApp() {
       <main className="main-area">
         <header className="topbar">
           <button className="mobile-menu icon-btn" onClick={() => setMobileNav(!mobileNav)} aria-label="Toggle menu"><Menu size={20} /></button>
-          <div className="breadcrumb"><span>YOUR SPACE</span><b>/</b><strong>{page === "home" ? "Discover" : page === "playlist-detail" ? activePlaylist?.name || "Playlist" : navItems.find(([key]) => key === page)?.[1] || "Settings"}</strong></div>
+          <div className="breadcrumb"><span>YOUR SPACE</span><b>/</b><strong>{page === "playlist-detail" ? activePlaylist?.name || "Playlist" : navItems.find(([key]) => key === page)?.[1] || "Settings"}</strong></div>
           <div className="topbar-actions">
             <form className="search-box" onSubmit={searchChannel} title="Enter a username to open a creator channel">
               <button className="search-submit" type="submit" aria-label="Find a channel"><Search size={17} /></button>
@@ -620,7 +620,7 @@ export default function StreamTweetApp() {
         </header>
 
         <div className="content-area">
-          {page === "home" && <HomePage user={user} videos={filteredVideos} onAction={handleHomeAction} onPage={navigate} onOpenVideo={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
+          {page === "home" && <HomePage user={user} videos={filteredVideos} onAction={handleHomeAction} onOpenVideo={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
           {page === "feed" && <GlobalFeedPage tweets={feedTweets.filter((item) => !query || (item.content || "").toLowerCase().includes(query.toLowerCase()))} pagination={feedPagination} loading={feedLoading} onPage={fetchGlobalFeed} user={user} api={api} onNotify={notify} onRequireUser={requireUser} onCreate={() => setModal({ type: "tweet-create" })} onLike={toggleLike} onEdit={(item) => setModal({ type: "tweet-edit", itemId: idOf(item), item })} onDelete={(item) => deleteItem("tweet", idOf(item))} />}
           {page === "subscriptions" && <SubscribedChannelsPage channels={subscribedChannels.filter((item) => `${item.fullname || ""} ${item.username || ""}`.toLowerCase().includes(query.toLowerCase()))} onOpen={openChannel} onFind={() => setModal({ type: "channel-search" })} />}
           {page === "videos" && <VideosPage videos={filteredVideos} user={user} query={videoQuery} setQuery={setVideoQuery} sortBy={sortBy} setSortBy={setSortBy} sortType={sortType} setSortType={setSortType} onSearch={() => loadPage("videos")} onUpload={() => requireUser("upload a video") && setModal({ type: "video-create" })} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} onEdit={(video) => setModal({ type: "video-edit", itemId: idOf(video), item: video })} onDelete={(video) => deleteItem("video", idOf(video))} onPublish={async (video) => { try { const result = await api(`/videos/toggle-publish-status/${encodeURIComponent(idOf(video))}`, { method: "PUT" }); await fetchVideos(); notify(result.message || "Visibility updated."); } catch (error) { notify(error.message); } }} />}
@@ -640,42 +640,45 @@ export default function StreamTweetApp() {
   );
 }
 
-function HomePage({ user, videos, onAction, onPage, onOpenVideo, onLike, isVideoLiked }) {
-  const featured = videos[0];
+function HomePage({ user, videos, onAction, onOpenVideo, onLike, isVideoLiked }) {
+  const [homeFilter, setHomeFilter] = useState("all");
+  const homeVideos = useMemo(() => {
+    if (homeFilter === "recent") {
+      return [...videos].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    }
+    if (homeFilter === "popular") {
+      return [...videos].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+    }
+    return videos;
+  }, [homeFilter, videos]);
+
   return (
-    <>
-      <section className={`hero ${user ? "hero-member" : "hero-guest"}`} style={{ "--hero-image": `url("${featured?.thumbnail || fallbackArt}")` }}>
-        <div className="hero-scrim" />
-        <div className="hero-copy">
-          <p className="eyebrow"><span className="live-dot" /> {user ? `WELCOME BACK, ${(user.fullname || user.username || "FRIEND").toUpperCase()}` : "YOUR WORLD, IN MOTION"}</p>
-          <h1>{user ? <>Your corner<br />of the <em>internet.</em></> : <>Watch. Share.<br /><em>Find your people.</em></>}</h1>
-          <p className="hero-description">{user ? "The good stuff you made, saved, and haven’t seen yet." : "Good videos, little thoughts, and the people who make it worth scrolling."}</p>
-          <div className="hero-actions">
-            {user ? <><button className="button button-primary" onClick={() => onAction("video-create")}><Plus size={17} /> Upload something</button><button className="button button-glass" onClick={() => onAction("tweet-create")}>Write a little update</button></> : <><button className="button button-primary" onClick={() => onAction("register")}><Sparkles size={17} /> Get started</button><button className="button button-glass" onClick={() => onAction("login")}>I have an account</button></>}
-          </div>
-        </div>
-        <div className="hero-decoration" aria-hidden="true"><div className="hero-disc"><span><Video size={29} fill="currentColor" /></span></div><i className="hero-star star-one">✳</i><i className="hero-star star-two">✦</i></div>
-        <div className="hero-footer"><span>01</span><i /><span>{featured ? "YOUR LATEST MOMENT" : "A STREAMTWEET ORIGINAL"}</span><span className="hero-index-right">SCROLL A LITTLE <ArrowDownUp size={13} /></span></div>
-        {featured && <button className="hero-watch" onClick={() => onOpenVideo(featured)}>Play your latest <ArrowRight size={16} /></button>}
-      </section>
-
-      <div className="section-intro">
-        <div><div className="eyebrow">A GOOD PLACE TO START</div><h2>{user ? "Pick up where you left off." : "A little bit of everything."}</h2><p>{user ? "Your StreamTweet space, made yours." : "The best corners of the internet feel like yours."}</p></div>
-        <button className="text-link" onClick={() => onPage(user ? "subscriptions" : "channel")}>{user ? "Your subscribed channels" : "Find a channel"} <ArrowRight size={16} /></button>
+    <section className="home-recommendations">
+      <div className="home-heading">
+      <div><span className="eyebrow">{user ? "YOUR WATCH FEED" : "STREAMTWEET"}</span><h1>Recommended</h1></div>
+      <button className="button button-primary" onClick={() => onAction(user ? "video-create" : "login")}>
+        {user ? <><Plus size={16} /> Upload video</> : <><LogIn size={16} /> Sign in</>}
+      </button>
       </div>
-
-      {user && videos.length > 0 ? (
-        <div className="featured-grid">{videos.slice(0, 3).map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} onOpen={onOpenVideo} onLike={onLike} user={user} isLiked={isVideoLiked(idOf(video))} compact={index > 0} />)}</div>
+      <div className="filter-chips" aria-label="Sort recommendations">
+      {[["all", "All"], ["recent", "Recently added"], ["popular", "Most watched"]].map(([key, label]) => (
+        <button key={key} className={homeFilter === key ? "active" : ""} aria-pressed={homeFilter === key} onClick={() => setHomeFilter(key)}>{label}</button>
+      ))}
+      </div>
+      {homeVideos.length ? (
+      <div className="video-grid video-grid-home">
+        {homeVideos.map((video, index) => <VideoCard key={idOf(video)} video={video} index={index} onOpen={onOpenVideo} onLike={onLike} user={user} isLiked={isVideoLiked(idOf(video))} showManagement={false} />)}
+      </div>
       ) : (
-        <div className="discovery-grid">
-          <button className="discovery-card discovery-purple" onClick={() => onAction(user ? "video-create" : "register")}><span className="discovery-number">01 / VIDEO</span><span className="discovery-illustration play-illustration"><Video size={38} /></span><strong>Stories worth<br />staying up for.</strong><span className="discovery-link">Explore videos <ArrowRight size={15} /></span></button>
-          <button className="discovery-card discovery-green" onClick={() => onAction(user ? "tweet-create" : "register")}><span className="discovery-number">02 / THOUGHTS</span><span className="discovery-illustration thought-illustration">✳</span><strong>Little thoughts.<br />Big main character energy.</strong><span className="discovery-link">Share an update <ArrowRight size={15} /></span></button>
-          <button className="discovery-card discovery-pink" onClick={() => onAction("channel-search")}><span className="discovery-number">03 / COMMUNITY</span><span className="discovery-illustration community-illustration"><UserRound size={39} /></span><strong>Find your people.<br />Stay for the good stuff.</strong><span className="discovery-link">Find a channel <ArrowRight size={15} /></span></button>
-        </div>
+      <EmptyState
+        icon={<Film />}
+        title={user ? "Your recommendations are waiting." : "Sign in to find your next favorite video."}
+        copy={user ? "Upload your first video to start filling your watch feed." : "Log in to explore videos, creators, and your subscriptions."}
+        action={user ? "Upload a video" : "Log in"}
+        onClick={() => onAction(user ? "video-create" : "login")}
+      />
       )}
-      {user && videos.length === 0 && <EmptyState icon={<Film />} title="It’s a blank canvas." copy="Your first upload could be the start of something." action="Upload your first video" onClick={() => onAction("video-create")} />}
-      <section className="closing-banner"><div className="closing-spark">✳</div><div><span className="eyebrow">YOUR PEOPLE ARE HERE</span><h2>Make something.<br /><em>Share it with someone.</em></h2></div><button className="button button-dark" onClick={() => onAction(user ? "tweet-create" : "register")}>{user ? "Write an update" : "Join the vibe"} <ArrowRight size={16} /></button></section>
-    </>
+    </section>
   );
 }
 
