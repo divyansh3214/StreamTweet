@@ -5,6 +5,7 @@ import {
   Heart, History, Home, ListVideo, LogIn, LogOut, Menu, MessageCircle, MoreHorizontal,
   Play, Plus, Search, Settings, Sparkles, UserRound, Video, X,
 } from "lucide-react";
+import Hls from "hls.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const API = "/api/v1";
@@ -47,6 +48,32 @@ function Avatar({ user, size = "normal" }) {
       {user?.avatar ? <img src={user.avatar} alt="" /> : name.slice(0, 1).toUpperCase()}
     </span>
   );
+}
+
+function AdaptiveVideoPlayer({ streamUrl, fallbackUrl }) {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    if (streamUrl && videoElement.canPlayType("application/vnd.apple.mpegurl")) {
+      videoElement.src = streamUrl;
+      return () => videoElement.removeAttribute("src");
+    }
+
+    if (streamUrl && Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(streamUrl);
+      hls.attachMedia(videoElement);
+      return () => hls.destroy();
+    }
+
+    videoElement.src = fallbackUrl;
+    return () => videoElement.removeAttribute("src");
+  }, [fallbackUrl, streamUrl]);
+
+  return <video ref={videoRef} controls autoPlay playsInline />;
 }
 
 export default function StreamTweetApp() {
@@ -1096,7 +1123,7 @@ function Modal({ modal, busy, close, submit, activeVideo, comments, user, api, n
   if (type === "video-detail") return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
     <section className="detail-modal">
       <button className="modal-close" onClick={close}><X size={20} /></button>
-      <div className="detail-player-wrap">{activeVideo?.videofile ? <video src={activeVideo.videofile} controls autoPlay playsInline /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div>
+      <div className="detail-player-wrap">{activeVideo?.videofile ? <AdaptiveVideoPlayer streamUrl={activeVideo.adaptiveStreamUrl} fallbackUrl={activeVideo.videofile} /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div>
       <div className="detail-content">
         <span className="eyebrow">IN THE STREAM</span>
         <h2>{activeVideo?.title || "A little something to watch."}</h2>

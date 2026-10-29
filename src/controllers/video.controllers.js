@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/async_handler.js";
 import apiresponse from "../utils/Api_response.js";
 import user from "../models/user.model.js";
 import uploadoncloudinary from "../utils/cloudinary.js";
-import { deleteoncloudinary } from "../utils/cloudinary.js";
+import { adaptiveStreamUrl, deleteoncloudinary } from "../utils/cloudinary.js";
 import video from "../models/video.model.js";
 
 const getallvideos = asyncHandler(async (req, res) => {
@@ -174,10 +174,16 @@ const getvideobyid = asyncHandler(async (req, res) => {
     throw new ApiiError(404, "video not found");
   }
 
+  const storedVideoUrl = videodetails[0].videofile;
+  const streamUrl = adaptiveStreamUrl(storedVideoUrl);
+
   return res.status(200).json(
     new apiresponse(
       200,
-      videodetails[0],
+      {
+        ...videodetails[0],
+        adaptiveStreamUrl: streamUrl
+      },
       "video details fetched successfully"
     )
   );

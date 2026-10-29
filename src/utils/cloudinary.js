@@ -43,6 +43,29 @@ const publicurl=async(url)=>{
     return publicIdParts.join('/');
 }
 
+const adaptiveStreamUrl=(url)=>{
+  const cloudinaryUrl = new URL(url);
+  const pathParts = cloudinaryUrl.pathname.split("/");
+  const uploadIndex = pathParts.indexOf("upload");
+  if (uploadIndex === -1) {
+    throw new Error("Invalid Cloudinary asset URL");
+  }
+
+  if (!pathParts.includes("sp_full_hd", uploadIndex + 1)) {
+    pathParts.splice(uploadIndex + 1, 0, "sp_full_hd");
+  }
+
+  const filenameIndex = pathParts.length - 1;
+  const filename = pathParts[filenameIndex];
+  const extensionIndex = filename.lastIndexOf(".");
+  pathParts[filenameIndex] = extensionIndex > 0
+    ? `${filename.slice(0, extensionIndex)}.m3u8`
+    : `${filename}.m3u8`;
+  cloudinaryUrl.pathname = pathParts.join("/");
+
+  return cloudinaryUrl.toString();
+}
+
 const deleteoncloudinary=async(fileUrl)=>{
   const publicId=await publicurl(fileUrl);
   try {
@@ -54,5 +77,5 @@ const deleteoncloudinary=async(fileUrl)=>{
       throw err;
    }
 }
-export {deleteoncloudinary,publicurl}
+export {adaptiveStreamUrl,deleteoncloudinary,publicurl}
 export default uploadoncloudinary;
