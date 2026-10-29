@@ -54,5 +54,5 @@ const deleteoncloudinary=async(fileUrl)=>{
       throw err;
    }
 }
-export {deleteoncloudinary}
+export {deleteoncloudinary,publicurl}
 export default uploadoncloudinary;
