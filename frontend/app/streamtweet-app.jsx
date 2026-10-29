@@ -50,44 +50,54 @@ function Avatar({ user, size = "normal" }) {
   );
 }
 
-function AdaptiveVideoPlayer({ streamUrl, fallbackUrl }) {
+function AdaptiveVideoPlayer({ streamUrl, fallbackUrl, qualities = {} }) {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
-  const [levels, setLevels] = useState([]);
-  const [selectedLevel, setSelectedLevel] = useState("auto");
-  const [canSelectQuality, setCanSelectQuality] = useState(false);
+  const playbackRef = useRef({ currentTime: 0, wasPlaying: false });
+  const [selectedQuality, setSelectedQuality] = useState("auto");
 
   useEffect(() => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
-    setLevels([]);
-    setSelectedLevel("auto");
-    setCanSelectQuality(false);
+    const previousPlayback = playbackRef.current;
+    const restorePlayback = () => {
+      if (Number.isFinite(previousPlayback.currentTime) && previousPlayback.currentTime > 0) {
+        videoElement.currentTime = Math.min(previousPlayback.currentTime, videoElement.duration || previousPlayback.currentTime);
+      }
+      if (previousPlayback.wasPlaying) videoElement.play().catch(() => {});
+    };
+    const handleLoadedMetadata = () => restorePlayback();
+
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+    videoElement.addEventListener("loadedmetadata", handleLoadedMetadata, { once: true });
+
+    if (selectedQuality !== "auto") {
+      videoElement.src = qualities[selectedQuality] || fallbackUrl;
+      return () => {
+        playbackRef.current = { currentTime: videoElement.currentTime, wasPlaying: !videoElement.paused };
+        videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        videoElement.removeAttribute("src");
+        videoElement.load();
+      };
+    }
 
     if (streamUrl && Hls.isSupported()) {
       const hls = new Hls();
       hlsRef.current = hls;
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        const availableLevels = hls.levels
-          .map((level, index) => ({ index, height: level.height, bitrate: level.bitrate }))
-          .filter((level) => Number.isFinite(level.height) && level.height > 0)
-          .sort((left, right) => left.height - right.height);
-        setLevels(availableLevels);
-        setCanSelectQuality(availableLevels.length > 1);
-      });
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
           hls.destroy();
           hlsRef.current = null;
           videoElement.src = fallbackUrl;
-          setLevels([]);
-          setCanSelectQuality(false);
         }
       });
       hls.loadSource(streamUrl);
       hls.attachMedia(videoElement);
       return () => {
+        playbackRef.current = { currentTime: videoElement.currentTime, wasPlaying: !videoElement.paused };
+        videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
         hls.destroy();
         if (hlsRef.current === hls) hlsRef.current = null;
       };
@@ -95,29 +105,27 @@ function AdaptiveVideoPlayer({ streamUrl, fallbackUrl }) {
 
     if (streamUrl && videoElement.canPlayType("application/vnd.apple.mpegurl")) {
       videoElement.src = streamUrl;
-      return () => videoElement.removeAttribute("src");
+    } else {
+      videoElement.src = fallbackUrl;
     }
 
-    videoElement.src = fallbackUrl;
-    return () => videoElement.removeAttribute("src");
-  }, [fallbackUrl, streamUrl]);
+    return () => {
+      playbackRef.current = { currentTime: videoElement.currentTime, wasPlaying: !videoElement.paused };
+      videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      videoElement.removeAttribute("src");
+      videoElement.load();
+    };
+  }, [fallbackUrl, qualities, selectedQuality, streamUrl]);
 
-  const changeQuality = (event) => {
-    const level = event.target.value;
-    setSelectedLevel(level);
-    const hls = hlsRef.current;
-    if (hls) hls.currentLevel = level === "auto" ? -1 : Number(level);
-  };
+  const availableQualities = Object.keys(qualities).sort((left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10));
 
   return <div className="adaptive-player">
     <video ref={videoRef} controls autoPlay playsInline />
-    {canSelectQuality && <label className="video-quality-control">
+    {availableQualities.length > 0 && <label className="video-quality-control">
       <span>Quality</span>
-      <select aria-label="Video quality" value={selectedLevel} onChange={changeQuality}>
+      <select aria-label="Video quality" value={selectedQuality} onChange={(event) => setSelectedQuality(event.target.value)}>
         <option value="auto">Auto</option>
-        {levels.map((level) => <option key={`${level.height}-${level.index}`} value={level.index}>
-          {level.height}p{level.bitrate ? ` (${Math.round(level.bitrate / 1000)} kbps)` : ""}
-        </option>)}
+        {availableQualities.map((quality) => <option key={quality} value={quality}>{quality}</option>)}
       </select>
     </label>}
   </div>;
@@ -1170,7 +1178,7 @@ function Modal({ modal, busy, close, submit, activeVideo, comments, user, api, n
   if (type === "video-detail") return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
     <section className="detail-modal">
       <button className="modal-close" onClick={close}><X size={20} /></button>
-      <div className="detail-player-wrap">{activeVideo?.videofile ? <AdaptiveVideoPlayer streamUrl={activeVideo.adaptiveStreamUrl} fallbackUrl={activeVideo.videofile} /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div>
+      <div className="detail-player-wrap">{activeVideo?.videofile ? <AdaptiveVideoPlayer key={idOf(activeVideo)} streamUrl={activeVideo.adaptiveStreamUrl} fallbackUrl={activeVideo.videofile} qualities={activeVideo.qualities} /> : <div className="detail-still" style={{ backgroundImage: `url("${activeVideo?.thumbnail || fallbackArt}")` }}><span><Video size={28} /></span></div>}</div>
       <div className="detail-content">
         <span className="eyebrow">IN THE STREAM</span>
         <h2>{activeVideo?.title || "A little something to watch."}</h2>
