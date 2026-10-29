@@ -1,11 +1,10 @@
-import { v2 as cloudinary } from "cloudinary";
 import ApiiError from "../utils/Api_error.js";
 import mongoose from "mongoose";
 import { asyncHandler } from "../utils/async_handler.js";
 import apiresponse from "../utils/Api_response.js";
 import user from "../models/user.model.js";
 import uploadoncloudinary from "../utils/cloudinary.js";
-import { deleteoncloudinary, publicurl } from "../utils/cloudinary.js";
+import { deleteoncloudinary } from "../utils/cloudinary.js";
 import video from "../models/video.model.js";
 
 const getallvideos = asyncHandler(async (req, res) => {
@@ -175,37 +174,10 @@ const getvideobyid = asyncHandler(async (req, res) => {
     throw new ApiiError(404, "video not found");
   }
 
-  const publicId = await publicurl(videodetails[0].videofile);
-
-  const qualities = {
-    "144p": cloudinary.url(publicId, {
-      resource_type: "video",
-      transformation: [{ height: 144, crop: "scale" }]
-    }),
-
-    "360p": cloudinary.url(publicId, {
-      resource_type: "video",
-      transformation: [{ height: 360, crop: "scale" }]
-    }),
-
-    "720p": cloudinary.url(publicId, {
-      resource_type: "video",
-      transformation: [{ height: 720, crop: "scale" }]
-    }),
-
-    "1080p": cloudinary.url(publicId, {
-      resource_type: "video",
-      transformation: [{ height: 1080, crop: "scale" }]
-    })
-  };
-
   return res.status(200).json(
     new apiresponse(
       200,
-      {
-        video: videodetails[0],
-        qualities
-      },
+      videodetails[0],
       "video details fetched successfully"
     )
   );

@@ -250,7 +250,8 @@ export default function StreamTweetApp() {
         api(`/videos/get-video/${encodeURIComponent(idOf(video))}`),
         api(`/comments/get-video-comments/${encodeURIComponent(idOf(video))}?page=1&limit=30`),
       ]);
-      setActiveVideo(detail.data || video);
+      const videoDetails = detail.data?.video || detail.data;
+      setActiveVideo(videoDetails || video);
       setComments(listFrom(commentsResult));
     } catch (error) {
       notify(error.message);
