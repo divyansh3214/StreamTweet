@@ -309,7 +309,11 @@ button:disabled { opacity: .6; cursor: wait; }
 .auth-switch { justify-self: start; }
 .detail-modal { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(330px,.85fr); max-height: min(790px,calc(100vh - 40px)); max-width: 1120px; overflow: hidden; width: 100%; }
 .detail-player-wrap { align-items: center; background: #09090c; display: flex; justify-content: center; min-height: 360px; }
-.detail-player-wrap video { max-height: min(75vh,720px); width: 100%; }
+.adaptive-player { position: relative; width: 100%; }
+.detail-player-wrap .adaptive-player video { display: block; max-height: min(75vh,720px); width: 100%; }
+.video-quality-control { align-items: center; background: rgba(15,15,15,.88); border-radius: 6px; bottom: 46px; display: flex; gap: 7px; padding: 5px 8px; position: absolute; right: 12px; }
+.video-quality-control span { color: #fff; font-size: 11px; }
+.video-quality-control select { background: #222; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; color: #fff; font-size: 11px; padding: 4px 6px; }
 .detail-still { align-items: center; background-position: center; background-size: cover; display: flex; height: 100%; justify-content: center; min-height: 400px; position: relative; width: 100%; }
 .detail-still::before { background: rgba(0,0,0,.25); content: ""; inset: 0; position: absolute; }
 .detail-still > span { align-items: center; backdrop-filter: blur(8px); background: var(--lime); border-radius: 50%; color: #20251a; display: flex; height: 58px; justify-content: center; position: relative; width: 58px; }

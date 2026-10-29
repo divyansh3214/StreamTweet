@@ -52,28 +52,75 @@ function Avatar({ user, size = "normal" }) {
 
 function AdaptiveVideoPlayer({ streamUrl, fallbackUrl }) {
   const videoRef = useRef(null);
+  const hlsRef = useRef(null);
+  const [levels, setLevels] = useState([]);
+  const [selectedLevel, setSelectedLevel] = useState("auto");
+  const [canSelectQuality, setCanSelectQuality] = useState(false);
 
   useEffect(() => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
+
+    setLevels([]);
+    setSelectedLevel("auto");
+    setCanSelectQuality(false);
+
+    if (streamUrl && Hls.isSupported()) {
+      const hls = new Hls();
+      hlsRef.current = hls;
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        const availableLevels = hls.levels
+          .map((level, index) => ({ index, height: level.height, bitrate: level.bitrate }))
+          .filter((level) => Number.isFinite(level.height) && level.height > 0)
+          .sort((left, right) => left.height - right.height);
+        setLevels(availableLevels);
+        setCanSelectQuality(availableLevels.length > 1);
+      });
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          hls.destroy();
+          hlsRef.current = null;
+          videoElement.src = fallbackUrl;
+          setLevels([]);
+          setCanSelectQuality(false);
+        }
+      });
+      hls.loadSource(streamUrl);
+      hls.attachMedia(videoElement);
+      return () => {
+        hls.destroy();
+        if (hlsRef.current === hls) hlsRef.current = null;
+      };
+    }
 
     if (streamUrl && videoElement.canPlayType("application/vnd.apple.mpegurl")) {
       videoElement.src = streamUrl;
       return () => videoElement.removeAttribute("src");
     }
 
-    if (streamUrl && Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(streamUrl);
-      hls.attachMedia(videoElement);
-      return () => hls.destroy();
-    }
-
     videoElement.src = fallbackUrl;
     return () => videoElement.removeAttribute("src");
   }, [fallbackUrl, streamUrl]);
 
-  return <video ref={videoRef} controls autoPlay playsInline />;
+  const changeQuality = (event) => {
+    const level = event.target.value;
+    setSelectedLevel(level);
+    const hls = hlsRef.current;
+    if (hls) hls.currentLevel = level === "auto" ? -1 : Number(level);
+  };
+
+  return <div className="adaptive-player">
+    <video ref={videoRef} controls autoPlay playsInline />
+    {canSelectQuality && <label className="video-quality-control">
+      <span>Quality</span>
+      <select aria-label="Video quality" value={selectedLevel} onChange={changeQuality}>
+        <option value="auto">Auto</option>
+        {levels.map((level) => <option key={`${level.height}-${level.index}`} value={level.index}>
+          {level.height}p{level.bitrate ? ` (${Math.round(level.bitrate / 1000)} kbps)` : ""}
+        </option>)}
+      </select>
+    </label>}
+  </div>;
 }
 
 export default function StreamTweetApp() {
