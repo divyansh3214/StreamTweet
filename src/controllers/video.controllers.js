@@ -5,10 +5,8 @@ import { asyncHandler } from "../utils/async_handler.js";
 import apiresponse from "../utils/Api_response.js";
 import user from "../models/user.model.js";
 import uploadoncloudinary from "../utils/cloudinary.js";
-import { deleteoncloudinary } from "../utils/cloudinary.js";
+import { deleteoncloudinary, publicurl } from "../utils/cloudinary.js";
 import video from "../models/video.model.js";
-import { v2 as cloudinary } from "cloudinary";
-import { publicurl } from "../utils/cloudinary.js";
 
 const getallvideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, userid, query, sortBy, sortType } = req.query;
