@@ -1,3 +1,4 @@
+import { v2 as cloudinary } from "cloudinary";
 import ApiiError from "../utils/Api_error.js";
 import mongoose from "mongoose";
 import { asyncHandler } from "../utils/async_handler.js";
@@ -6,6 +7,9 @@ import user from "../models/user.model.js";
 import uploadoncloudinary from "../utils/cloudinary.js";
 import { deleteoncloudinary } from "../utils/cloudinary.js";
 import video from "../models/video.model.js";
+import { v2 as cloudinary } from "cloudinary";
+import { publicurl } from "../utils/cloudinary.js";
+
 const getallvideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, userid, query, sortBy, sortType } = req.query;
 
@@ -115,63 +119,99 @@ const deletevideo = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new apiresponse(200, null, "video deleted successfully"));
 });
+const getvideobyid = asyncHandler(async (req, res) => {
+  const { videoid } = req.params;
 
-const getvideobyid=asyncHandler(async(req,res)=>{
-    const { videoid }=req.params;
-    if(!videoid){
-        throw new ApiiError(400,"videoid is required")
-    }
-    const updatedVideo = await video.findByIdAndUpdate(
-      videoid,
-      { $inc: { views: 1 } },
-      { new: true }
-    );
-    if (!updatedVideo) {
-      throw new ApiiError(404, "video not found");
-    }
-    await user.findByIdAndUpdate(req.loggedoutuser?._id, {
-      $addToSet: { watchhistory: updatedVideo._id }
-    });
-    const videodetails = await video.aggregate([
-  {
-    $match: {
-      _id: new mongoose.Types.ObjectId(videoid)
-    }
-  },
-  {
-    $lookup: {
-      from: "users",
-      localField: "owner",
-      foreignField: "_id",
-      as: "ownerdetails",
-      pipeline: [
-        {
-          $project: {
-            username: 1,
-            fullname: 1,
-            avatar: 1,
-            coverImage: 1
-          }
-        }
-      ]
-    }
-  },
-  {
-    $addFields: {
-      ownerdetails: { $arrayElemAt: ["$ownerdetails", 0] }
-    }
+  if (!videoid) {
+    throw new ApiiError(400, "videoid is required");
   }
-]);
 
-if (!videodetails.length) {
-  throw new ApiiError(404, "video not found");
-}
+  const updatedVideo = await video.findByIdAndUpdate(
+    videoid,
+    { $inc: { views: 1 } },
+    { new: true }
+  );
 
-return res
-  .status(200)
-  .json(new apiresponse(200, videodetails[0], "video details fetched successfully"));
+  if (!updatedVideo) {
+    throw new ApiiError(404, "video not found");
+  }
 
-})
+  await user.findByIdAndUpdate(req.loggedoutuser?._id, {
+    $addToSet: { watchhistory: updatedVideo._id }
+  });
+
+  const videodetails = await video.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(videoid)
+      }
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerdetails",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              fullname: 1,
+              avatar: 1,
+              coverImage: 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      $addFields: {
+        ownerdetails: {
+          $arrayElemAt: ["$ownerdetails", 0]
+        }
+      }
+    }
+  ]);
+
+  if (!videodetails.length) {
+    throw new ApiiError(404, "video not found");
+  }
+
+  const publicId = await publicurl(videodetails[0].videofile);
+
+  const qualities = {
+    "144p": cloudinary.url(publicId, {
+      resource_type: "video",
+      transformation: [{ height: 144, crop: "scale" }]
+    }),
+
+    "360p": cloudinary.url(publicId, {
+      resource_type: "video",
+      transformation: [{ height: 360, crop: "scale" }]
+    }),
+
+    "720p": cloudinary.url(publicId, {
+      resource_type: "video",
+      transformation: [{ height: 720, crop: "scale" }]
+    }),
+
+    "1080p": cloudinary.url(publicId, {
+      resource_type: "video",
+      transformation: [{ height: 1080, crop: "scale" }]
+    })
+  };
+
+  return res.status(200).json(
+    new apiresponse(
+      200,
+      {
+        video: videodetails[0],
+        qualities
+      },
+      "video details fetched successfully"
+    )
+  );
+});
 const updatevideo = asyncHandler(async (req, res) => {
   const { videoid } = req.params;
   const { title, description } = req.body;
