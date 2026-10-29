@@ -242,6 +242,15 @@ export default function StreamTweetApp() {
     return rows;
   }, [api, sortBy, sortType, user]);
 
+  const fetchPlaylists = useCallback(async () => {
+    if (!user) return [];
+    const userId = user._id || user.id;
+    const result = await api(`/playlists/get-user-playlists/${encodeURIComponent(userId)}`);
+    const rows = listFrom(result);
+    setPlaylists(rows);
+    return rows;
+  }, [api, user]);
+
   const fetchGlobalFeed = useCallback(async (requestedPage = 1) => {
     setFeedLoading(true);
     try {
@@ -285,10 +294,11 @@ export default function StreamTweetApp() {
         setLikedVideoIds(new Set(videos.map(idOf)));
       }
       if (target === "history") setHistory(listFrom(await api("/users/watch-history")));
+      if (target === "playlists") await Promise.all([fetchPlaylists(), fetchVideos()]);
     } catch (error) {
       notify(error.message);
     }
-  }, [api, fetchGlobalFeed, fetchSubscribedChannels, fetchVideos, notify, page, user, videoQuery]);
+  }, [api, fetchGlobalFeed, fetchPlaylists, fetchSubscribedChannels, fetchVideos, notify, page, user, videoQuery]);
 
   useEffect(() => {
     if (!user) return;
@@ -417,12 +427,17 @@ export default function StreamTweetApp() {
 
   const addVideoToPlaylist = async (event) => {
     event.preventDefault();
-    const videoId = new FormData(event.currentTarget).get("videoId");
+    const form = event.currentTarget;
+    const videoId = new FormData(form).get("videoId");
     if (!activePlaylist || !videoId) return;
     try {
       const result = await api(`/playlists/add-video/${encodeURIComponent(idOf(activePlaylist))}/${encodeURIComponent(videoId)}`, { method: "POST" });
       const refreshed = await api(`/playlists/get-playlist/${encodeURIComponent(idOf(activePlaylist))}`);
       setActivePlaylist(refreshed.data);
+      setPlaylists((current) => current.map((item) => idOf(item) === idOf(activePlaylist)
+        ? { ...item, videos: refreshed.data.videos }
+        : item));
+      form.reset();
       notify(result.message || "Video added to playlist.");
     } catch (error) {
       notify(error.message);
@@ -437,6 +452,9 @@ export default function StreamTweetApp() {
         ...current,
         videos: current.videos.filter((item) => idOf(item) !== idOf(video)),
       }));
+      setPlaylists((current) => current.map((item) => idOf(item) === idOf(activePlaylist)
+        ? { ...item, videos: (item.videos || []).slice(0, -1) }
+        : item));
       notify(result.message || "Video removed from playlist.");
     } catch (error) {
       notify(error.message);
@@ -512,8 +530,8 @@ export default function StreamTweetApp() {
           body: JSON.stringify({ name: val("name"), description: val("description") }),
         });
         setModal(null);
+        setPlaylists((current) => [result.data, ...current]);
         setPage("playlists");
-        await loadPage("playlists");
         notify(result.message || "Playlist created.");
       } else if (modal.type === "playlist-edit") {
         result = await api(`/playlists/update-playlist/${encodeURIComponent(modal.itemId)}`, {
@@ -711,7 +729,7 @@ export default function StreamTweetApp() {
           {page === "liked" && <VideosPage title="The replay list" eyebrow="YOUR FAVORITES" description="All the videos you’ve loved, together in one place." videos={liked.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} user={user} onOpen={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
           {page === "history" && <HistoryPage entries={history.filter((item) => !query || (item.title || "").toLowerCase().includes(query.toLowerCase()))} onOpen={openVideo} />}
           {page === "playlists" && <PlaylistsPage playlists={playlists.filter((item) => !query || `${item.name || ""} ${item.description || ""}`.toLowerCase().includes(query.toLowerCase()))} onCreate={() => requireUser("create a playlist") && setModal({ type: "playlist-create" })} onOpen={openPlaylist} onEdit={(item) => setModal({ type: "playlist-edit", itemId: idOf(item), item })} onDelete={deletePlaylist} />}
-          {page === "playlist-detail" && activePlaylist && <PlaylistDetailPage playlist={activePlaylist} videos={videos} user={user} onBack={() => navigate("playlists")} onEdit={() => setModal({ type: "playlist-edit", itemId: idOf(activePlaylist), item: activePlaylist })} onAddVideo={addVideoToPlaylist} onRemoveVideo={removeVideoFromPlaylist} onOpenVideo={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
+          {page === "playlist-detail" && activePlaylist && <PlaylistDetailPage playlist={activePlaylist} videos={videos} user={user} onBack={() => navigate("playlists")} onEdit={() => setModal({ type: "playlist-edit", itemId: idOf(activePlaylist), item: activePlaylist })} onDelete={deletePlaylist} onAddVideo={addVideoToPlaylist} onRemoveVideo={removeVideoFromPlaylist} onOpenVideo={openVideo} onLike={toggleLike} isVideoLiked={(id) => likedVideoIds.has(id)} />}
           {page === "channel" && <ChannelPage channel={channel} user={user} onFind={() => setModal({ type: "channel-search" })} onOpenVideo={openVideo} onSubscriptionChange={changeSubscription} />}
           {page === "settings" && user && <SettingsPage user={user} api={api} setUser={(next) => { setUser(next); sessionStorage.setItem(USER_KEY, JSON.stringify(next)); }} onNotify={notify} onLogout={doLogout} />}
         </div>
@@ -856,13 +874,14 @@ function PlaylistsPage({ playlists, onCreate, onOpen, onEdit, onDelete }) {
   </>;
 }
 
-function PlaylistDetailPage({ playlist, videos, user, onBack, onEdit, onAddVideo, onRemoveVideo, onOpenVideo, onLike, isVideoLiked }) {
+function PlaylistDetailPage({ playlist, videos, user, onBack, onEdit, onDelete, onAddVideo, onRemoveVideo, onOpenVideo, onLike, isVideoLiked }) {
   const playlistVideos = playlist.videos || [];
   const includedIds = new Set(playlistVideos.map(idOf));
   const availableVideos = videos.filter((video) => !includedIds.has(idOf(video)));
   return <>
     <button className="text-link playlist-back" onClick={onBack}><ArrowLeft size={15} /> All playlists</button>
     <PageHeading eyebrow="YOUR PERSONAL COLLECTION" title={playlist.name} description={playlist.description || "A collection of videos you love."} action={onEdit} buttonText="Edit playlist" />
+    <button className="button button-danger playlist-delete" onClick={() => onDelete(playlist)}>Delete playlist</button>
     {availableVideos.length > 0 && <form className="playlist-add-video" onSubmit={onAddVideo}>
       <label htmlFor="playlist-video">Add one of your videos</label>
       <select id="playlist-video" name="videoId" defaultValue="" required>
